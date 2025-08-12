@@ -6,6 +6,7 @@ PROGRAM tafcj
     $INSERT I_EQUATE
 
     $INSERT I_F.OFS.SOURCE
+    $INSERT I_F.OFS.REQUEST.DETAIL
 
     GOSUB initvars
     GOSUB parseparams
@@ -44,41 +45,60 @@ dohelp:
     CRT '------------------------------------'
     CRT '1st one - OFS.SOURCE @ID (or "-" if login to T24 is not necessary)'
     CRT '-s:script_file'
-    CRT '...'
+    CRT 'Ones below are optional'
+    CRT '-u:        T24 login'
+    CRT '-p:        T24 password'
 
     RETURN
 
 *----------------------------------------------------------------------------------------------------------------------------------
 initvars:
 
+    IF GETENV('TAFJ_HOME', tafj_home) THEN TAFJ_on = @TRUE    ;* RUNNING.IN.TAFJ might be not yet set
+    ELSE TAFJ_on = @FALSE
+
+    CMD_line = ''
+    CMD_line_no = 0
+
     COMMIT_options = 'INAU' :@FM: 'IHLD' :@FM: 'RAW'
-    DIM DICT_list(1)
+    DIM DICT_list(1)                        ;* will expand dynamically
     MAT DICT_list = ''
-    DIM DICT_list_lref(1)
+    DIM DICT_list_lref(1)                     ;* will expand dynamically
     MAT DICT_list_lref = ''
     ERROR_message = 'Unknown error'
     EXIT_code = 1
 
-    DIM FILE_handle_list(1)
+    DIM FILE_handle_list(1)                     ;* will expand dynamically
     MAT FILE_handle_list = ''
-
     FILE_fname_list = 'F.SPF'
     FILE_no_curr = 1
+
+    FLD_name = ''  ;  FLD_posn = ''  ;  IS_lref = @FALSE  ;   LREF_posn = 0  ;   LOCREF_posn = 0
+
     INFO_list = ''
     is_EOF = @FALSE
-    LBL_list = ''  ;  LBL_posn_list = ''
-    LREF_posn = 0
+
+    LBL_list = ''  ;  LBL_posn_list = ''  ;  LBL_togo = ''
+
     RECORD_curr = ''
     RECORD_curr_init = ''
     RECORD_id_curr = ''
     RECORD_is_new = @FALSE
+
     REC_STAT_posn = -1
+
     SCRIPT_file = ''
     SCRIPT_data = ''
     SCRIPT_line = ''
     SCRIPT_line_no = 0
     SCRIPT_size = 0
+
+    DIM SELECT_list(1)     ;* will expand dynamically in getlist
+    MAT SELECT_list = ''
+    SELECT_name_list = 'DUMMY'
+
     START_time = TIMESTAMP()
+    T24_login = ''   ;  T24_passwd = '' ;  T24_userid = ''
     WARN_list = ''
 
     OPEN 'F.MNEMONIC.COMPANY' TO f_mnem_cmp ELSE
@@ -95,7 +115,21 @@ initvars:
 
     CLOSE f_mnem_cmp
 
-    CALL LOAD.COMPANY(COMPANY_curr)
+    MACRO_name_list = 'TODAY' :@FM: 'LCCY' :@FM: 'ID.COMPANY' :@FM: 'FM' :@FM: 'VM' :@FM: 'SM' :@FM: 'TM' :@FM: 'SPACE' :@FM: 'BLANK' :@FM: 'RECORD'
+    DIM MACRO_list(DCOUNT(MACRO_name_list, @FM))     ;* will expand dynamically
+    MAT MACRO_list = ''
+    MACRO_name = ''
+    MACRO_value = ''
+
+    MACRO_list(4) = @FM
+    MACRO_list(5) = @VM
+    MACRO_list(6) = @SM
+    MACRO_list(7) = @TM
+    MACRO_list(8) = ' '
+*    MACRO_list(9) = ''
+*    MACRO_list(10) = ''
+
+    GOSUB yloadcompany
 
     RETURN
 
@@ -150,9 +184,44 @@ parseparams:
         a_param = SENTENCE(param_no)
         IF a_param EQ '' THEN BREAK
 
+        par_name = FIELD(a_param, ':', 1)
+
         BEGIN CASE
-        CASE a_param[1,3] EQ '-s:'
+        CASE par_name EQ '-var'
+            MACRO_name = FIELD(a_param, ':', 2)
+            MACRO_value = FIELD(a_param, ':', 3, 99999)
+            CHANGE '#20' TO ' ' IN MACRO_value
+            CHANGE '#3e' TO '>' IN MACRO_value
+            CHANGE '#3d' TO '=' IN MACRO_value
+
+            FIND MACRO_name IN MACRO_name_list SETTING posn ELSE posn = 0
+            IF posn GT 0 THEN
+                ERROR_message = 'Forbidden to redefine internal registers'
+                EXIT_code = 53
+                GOSUB doexit
+            END
+
+            GOSUB ysetmacro
+
+        CASE par_name EQ '-s'
             SCRIPT_file = FIELD(a_param, ':', 2, 99)
+
+        CASE par_name EQ '-l'
+            T24_login = FIELD(a_param, ':', 2, 99)
+            OPEN 'F.USER.SIGN.ON.NAME' TO f_son ELSE
+                ERROR_message = 'Error opening F.USER.SIGN.ON.NAME'
+                EXIT_code = 49
+                GOSUB doexit
+            END
+            READ T24_userid FROM f_son, T24_login ELSE
+                ERROR_message = 'Not valid T24 login name'
+                EXIT_code = 50
+                GOSUB doexit
+            END
+            CLOSE f_son
+
+        CASE par_name EQ '-p'
+            T24_passwd = FIELD(a_param, ':', 2, 99)
 
         CASE OTHERWISE
             ERROR_message = 'Unrecognized parameter ' : DQUOTE(a_param)
@@ -168,6 +237,19 @@ parseparams:
         EXIT_code = 7
         GOSUB dohelp
         GOSUB doexit
+    END
+
+    IF T24_login NE '' AND T24_passwd EQ '' THEN
+        ECHO OFF
+        CRT 'Enter T24 password (Enter to cancel) ' :
+        INPUT T24_passwd
+        ECHO ON
+
+        IF T24_passwd EQ '' THEN
+            ERROR_message = 'Cancelled by user'
+            EXIT_code = 52
+            GOSUB doexit
+        END
     END
 
     RETURN
@@ -245,7 +327,9 @@ runscript:
         IF is_EOF THEN
 
             IF RECORD_curr_init NE RECORD_curr THEN
-                ERROR_message = 'Changes not saved - ' : FILE_fname_list<FILE_no_curr>
+                ERROR_message = 'Changes not saved - {1}>{2}'
+                CHANGE '{1}' TO FILE_fname_list<FILE_no_curr> IN ERROR_message
+                CHANGE '{2}' TO RECORD_id_curr IN ERROR_message
                 EXIT_code = 16
                 GOSUB doexit
             END
@@ -260,15 +344,25 @@ runscript:
 
 * TODO registers/@... replacement
 
+        CMD_line = SCRIPT_line         ;* for error messages, checks etc
+        CMD_line_no = SCRIPT_line_no
+
         BEGIN CASE
 
-        CASE SCRIPT_line EQ 'alert'       ;     GOSUB xecalert
-        CASE SCRIPT_line EQ 'commit'      ;     GOSUB xeccommit
-        CASE SCRIPT_line EQ 'debug'       ;     DEBUG
-        CASE SCRIPT_line EQ 'exit'        ;     GOSUB xecexit
-        CASE SCRIPT_line EQ 'jump'        ;     GOSUB xecjump
-        CASE SCRIPT_line EQ 'read'        ;     GOSUB xecread
-        CASE SCRIPT_line EQ 'update'      ;     GOSUB xecupdate
+        CASE CMD_line EQ 'alert'       ;     GOSUB xecalert
+        CASE CMD_line EQ 'commit'      ;     GOSUB xeccommit
+        CASE CMD_line EQ 'debug'       ;     DEBUG
+        CASE CMD_line EQ 'default'     ;     GOSUB xecmove    ;* 1 section, 2 commands
+        CASE CMD_line EQ 'delete'      ;     GOSUB xecdelete
+        CASE CMD_line EQ 'exec'        ;     GOSUB xecexec
+        CASE CMD_line EQ 'exit'        ;     GOSUB xecexit
+        CASE CMD_line EQ 'getlist'     ;     GOSUB xecgetlist
+        CASE CMD_line EQ 'getnext'     ;     GOSUB xecgetnext
+        CASE CMD_line EQ 'jump'        ;     GOSUB xecjump
+        CASE CMD_line EQ 'move'        ;     GOSUB xecmove
+        CASE CMD_line EQ 'read'        ;     GOSUB xecread
+        CASE CMD_line EQ 'select'      ;     GOSUB xecselect
+        CASE CMD_line EQ 'update'      ;     GOSUB xecupdate
 
         CASE OTHERWISE
             ERROR_message = 'Command not recognized (' : DQUOTE(SCRIPT_line) : ')'
@@ -286,12 +380,10 @@ runscript:
 xecalert:
 
     GOSUB ygetnextline
-    IF is_EOF OR SCRIPT_line[1, 1] NE ' ' THEN
-        ERROR_message = 'Command not finished properly'
-        EXIT_code = 18
-        GOSUB doexit
-    END
-    INFO_list<-1> = '[INFO] ' : TRIM(SCRIPT_line, ' ', 'L')
+    GOSUB ycheckcmdsyntax
+    ALERT_msg = SCRIPT_line
+    GOSUB yprocalertmsg
+    INFO_list<-1> = '[INFO] ' : ALERT_msg
 
     LOOP
         GOSUB ygetnextline
@@ -299,7 +391,10 @@ xecalert:
             GOSUB yrewind
             BREAK
         END
-        INFO_list<-1> = '[INFO] ' : TRIM(SCRIPT_line, ' ', 'L')
+        ALERT_msg = TRIM(SCRIPT_line, ' ', 'L')
+        GOSUB yprocalertmsg
+        INFO_list<-1> = '[INFO] ' : ALERT_msg
+
     REPEAT
 
     RETURN
@@ -307,7 +402,11 @@ xecalert:
 *----------------------------------------------------------------------------------------------------------------------------------
 xeccommit:
 
-*DEBUG
+    IF RECORD_id_curr EQ '' THEN
+        ERROR_message = 'No "read" command was executed yet'
+        EXIT_code = 44
+        GOSUB doexit
+    END
 
     IF NOT(RECORD_is_new) AND RECORD_curr = RECORD_curr_init THEN
         WARN_list<-1> = '[WARN] LIVE record not changed (' : FILE_fname_list<FILE_no_curr> : '>' : RECORD_id_curr : ')'
@@ -324,7 +423,7 @@ xeccommit:
     END
 
     commit_mode = 'LIVE'   ;* default
-    commit_version = ''   ;* default
+    commit_version = ','   ;* default
 
     GOSUB ygetnextline
     IF SCRIPT_line[1, 1] EQ ' ' THEN
@@ -404,10 +503,23 @@ xeccommit:
 
     BEGIN CASE
 
+    CASE commit_mode EQ 'RAW'
+
+        WRITE RECORD_curr TO FILE_handle_list(FILE_no_curr), RECORD_id_curr ON ERROR
+            ERROR_message = 'Unable to write to ': FILE_fname_list<FILE_no_curr>
+            EXIT_code = 51
+            GOSUB doexit
+        END
+
+        INFO_list<-1> = '[INFO] ' : FILE_fname_list<FILE_no_curr> : '>' : RECORD_id_curr : ': WRITE applied'
+
     CASE commit_mode EQ 'IHLD'
         RECORD_curr<REC_STAT_posn> = 'IHLD'
         RECORD_curr<REC_STAT_posn + 1> += 1
-        RECORD_curr<REC_STAT_posn + 2> = '42_TODO'
+
+        IF T24_login EQ '' THEN RECORD_curr<REC_STAT_posn + 2> = '42_TODO'
+        ELSE RECORD_curr<REC_STAT_posn + 2>= T24_userid
+
         RECORD_curr<REC_STAT_posn + 3> = OCONV(DATE(), 'DG')[3,6] : OCONV(OCONV(TIME(), 'MT'), 'MCC;:;')
 
         WRITE RECORD_curr TO f_nau, RECORD_id_curr ON ERROR
@@ -421,37 +533,52 @@ xeccommit:
         CHANGE '{2}' TO RECORD_id_curr IN info_msg
         INFO_list<-1> = info_msg
 
-*      RECORD_curr<REC_STAT_posn> = ''      ;*  TODO update on commit
-*      RECORD_curr<REC_STAT_posn + 1> = 0   ;* CURR.NO; to be incremented on commit
-*      RECORD_curr<REC_STAT_posn + 2> = '42_TODO'   ;* INPUTTER  TODO update on LIVE/INAU commit
-*      RECORD_curr<REC_STAT_posn + 3> = OCONV(DATE(), 'DG')[3,6] : OCONV(OCONV(TIME(), 'MT'), 'MCC;:;')  ;* DATE.TIME TODO update on commit
-*      RECORD_curr<REC_STAT_posn + 4> = ''  ;* AUTHORISER
-*      RECORD_curr<REC_STAT_posn + 5> = COMPANY_curr  ;*  CO.CODE TODO update on LIVE/INAU commit
-*      RECORD_curr<REC_STAT_posn + 6> = 1  ;* DEPT.CODE - TODO update on LIVE/INAU commit
-*
+    CASE commit_mode EQ 'LIVE' OR commit_mode EQ 'INAU'
 
-*DEBUG
+        IF OFS_source_id EQ '-' THEN
+            ERROR_message = 'OFS.SOURCE is mandatory for this operation'
+            EXIT_code = 40
+            GOSUB doexit
+        END
 
-    CASE commit_mode EQ 'RAW'
-        ERROR_message = 'Not yet supported'
-        EXIT_code = 999
-        GOSUB doexit
+*'SPF,/S/PROCESS//0,' : T24$LOGIN : '/' : T24$PASSWD : ',SYSTEM'
 
-        INFO_list<-1> = '[INFO] ' : FILE_fname_list<FILE_no_curr> : '>' : RECORD_id_curr : ': WRITE applied'
+        RECORD_curr<REC_STAT_posn> = 'IHLD'
+        RECORD_curr<REC_STAT_posn + 1> += 1
+        RECORD_curr<REC_STAT_posn + 2> = '42_TODO'
+        RECORD_curr<REC_STAT_posn + 3> = OCONV(DATE(), 'DG')[3,6] : OCONV(OCONV(TIME(), 'MT'), 'MCC;:;')
 
-    CASE commit_mode EQ 'INAU'
-        ERROR_message = 'Not yet supported'
-        EXIT_code = 999
-        GOSUB doexit
+        WRITE RECORD_curr TO f_nau, RECORD_id_curr ON ERROR
+            ERROR_message = 'Unable to write to ': nau_file
+            EXIT_code = 37
+            GOSUB doexit
+        END
 
-        INFO_list<-1> = '[INFO] ' : FILE_fname_list<FILE_no_curr> : '>' : RECORD_id_curr : ' committed as INAU'
+        BEGIN CASE
+        CASE commit_version NE ','
+            no_of_auth = ''   ;* default from VERSION
+        CASE commit_mode EQ 'INAU'
+            no_of_auth = 1
+        CASE 1
+            no_of_auth = 0
+        END CASE
 
-    CASE commit_mode EQ 'LIVE'
-        ERROR_message = 'Not yet supported'
-        EXIT_code = 999
-        GOSUB doexit
+        app_name = FIELD(FILE_fname_list<FILE_no_curr>, '.', 2, 999)
 
-        INFO_list<-1> = '[INFO] ' : FILE_fname_list<FILE_no_curr> : '>' : RECORD_id_curr : ' committed'
+        ofs_msg = '{1}{2}/I/PROCESS//{3},{4}/{5},{6}'
+        CHANGE '{1}' TO app_name IN ofs_msg
+        CHANGE '{2}' TO commit_version IN ofs_msg
+        CHANGE '{3}' TO no_of_auth IN ofs_msg
+        CHANGE '{4}' TO T24_login IN ofs_msg
+        CHANGE '{5}' TO T24_passwd IN ofs_msg
+        CHANGE '{6}' TO RECORD_id_curr IN ofs_msg
+
+        DEL_on_err = @TRUE
+        GOSUB ylaunchofs
+
+        info_msg =  FILE_fname_list<FILE_no_curr> : '>' : RECORD_id_curr : ' committed'
+        IF commit_mode EQ 'INAU' THEN info_msg := ' as INAU'
+        INFO_list<-1> = '[INFO] ' : info_msg
 
     END CASE
 
@@ -460,7 +587,69 @@ xeccommit:
     RETURN
 
 *----------------------------------------------------------------------------------------------------------------------------------
+xecdelete:
+
+    GOSUB ygetnextline
+    GOSUB ycheckcmdsyntax
+    table_name = SCRIPT_line
+
+    GOSUB ygetnextline
+    GOSUB ycheckcmdsyntax
+    record_to_del = SCRIPT_line
+
+    OPEN table_name TO f_for_del ELSE
+        ERROR_message = 'Error opening ' : table_name
+        EXIT_code = 13
+        GOSUB doexit
+    END
+
+    rec_exists = @TRUE
+    READ rec_dummy FROM f_for_del, record_to_del ELSE rec_exists = @FALSE
+
+    IF rec_exists THEN
+        DELETE f_for_del, record_to_del ON ERROR
+            ERROR_message = 'Unable to delete {1}>{2}'
+            CHANGE '{1}' TO table_name IN ERROR_message
+            CHANGE '{2}' TO record_to_del IN ERROR_message
+            EXIT_code = 38
+            GOSUB doexit
+        END
+        info_msg = '[INFO] Record {1}>{2} deleted'
+    END ELSE
+        info_msg = '[WARN] Record {1}>{2} does not exist, unable to delete'
+    END
+
+    CHANGE '{1}' TO table_name IN info_msg
+    CHANGE '{2}' TO record_to_del IN info_msg
+    INFO_list<-1> = info_msg
+
+    RETURN
+
+*----------------------------------------------------------------------------------------------------------------------------------
+xecexec:
+
+    GOSUB ygetnextline
+    GOSUB ycheckcmdsyntax
+    exec_cmd = SCRIPT_line
+
+    EXECUTE exec_cmd RETURNING ret_code RTNDATA ret_data RTNLIST ret_list
+    info_msg = '[INFO] Command at the line {1}: return code "{2}"'
+    CHANGE '{1}' TO SCRIPT_line_no IN info_msg
+    CHANGE '{2}' TO CONVERT(@FM:@VM:@SM, '^]\', ret_code) IN info_msg
+    INFO_list<-1> = info_msg
+
+    RETURN
+
+*----------------------------------------------------------------------------------------------------------------------------------
 xecexit:
+
+    IF RECORD_curr_init NE RECORD_curr THEN
+        ERROR_message = 'Changes not saved - {1}>{2}'
+        CHANGE '{1}' TO FILE_fname_list<FILE_no_curr> IN ERROR_message
+        CHANGE '{2}' TO RECORD_id_curr IN ERROR_message
+        EXIT_code = 16
+        GOSUB doexit
+    END
 
     GOSUB ygetnextline
     IF is_EOF OR SCRIPT_line[1, 1] NE ' ' THEN
@@ -485,24 +674,259 @@ xecexit:
     RETURN
 
 *----------------------------------------------------------------------------------------------------------------------------------
+xecgetlist:
+
+    GOSUB ygetnextline
+    GOSUB ycheckcmdsyntax
+    sel_list_name = SCRIPT_line
+
+    FIND sel_list_name IN SELECT_name_list SETTING posn ELSE posn = 0
+    IF posn = 0 THEN
+        sel_qty = INMAT(SELECT_list)
+        sel_qty ++
+        DIM SELECT_list(sel_qty)
+        SELECT_name_list<-1> = sel_list_name
+        posn = sel_qty
+    END
+
+     GETLIST sel_list_name TO SELECT_list(posn) ELSE
+        ERROR_message = 'SELECT list does not exist'
+        EXIT_code = 42
+        GOSUB doexit
+    END
+
+    RETURN
+
+*----------------------------------------------------------------------------------------------------------------------------------
+xecgetnext:
+
+    GOSUB ygetnextline
+    GOSUB ycheckcmdsyntax
+    sel_list_name = SCRIPT_line
+
+    FIND sel_list_name IN SELECT_name_list SETTING posn ELSE
+        ERROR_message = 'SELECT list does not exist'
+        EXIT_code = 42
+        GOSUB doexit
+    END
+
+    READNEXT MACRO_value FROM SELECT_list(posn) ELSE
+        LBL_togo = ':no_more_' : sel_list_name    ;* default one
+        GOSUB yjump
+        RETURN
+    END
+
+    GOSUB ygetnextline
+    GOSUB ycheckcmdsyntax
+    MACRO_name = SCRIPT_line
+    GOSUB ysetmacro
+
+    RETURN
+
+*----------------------------------------------------------------------------------------------------------------------------------
 xecjump:
 
     GOSUB ygetnextline
-    IF is_EOF OR SCRIPT_line[1, 1] NE ' ' THEN
-        ERROR_message = 'Command not finished properly'
-        EXIT_code = 18
-        GOSUB doexit
-    END
-    lbl_name = TRIM(SCRIPT_line, ' ', 'L')
+    GOSUB ycheckcmdsyntax
+    LBL_togo = SCRIPT_line
+    GOSUB yjump
 
-    FIND lbl_name IN LBL_list SETTING posn ELSE posn = 0
-    IF posn EQ 0 THEN
-        ERROR_message = 'Label not found (' : lbl_name : ')'
-        EXIT_code = 20
-        GOSUB doexit
-    END
+    RETURN
 
-    SCRIPT_line_no = LBL_posn_list<posn>
+*----------------------------------------------------------------------------------------------------------------------------------
+xecmove:
+
+    cmds_qty = 0
+    LOOP
+        cmds_qty ++
+        GOSUB ygetnextline
+
+        IF cmds_qty EQ 1 THEN GOSUB ycheckcmdsyntax
+        ELSE
+            IF is_EOF OR SCRIPT_line[1, 1] NE ' ' THEN
+                GOSUB yrewind
+                BREAK
+            END
+        END
+
+        MACRO_name = TRIM(SCRIPT_line, ' ', 'L')
+
+        GOSUB ygetnextline
+        GOSUB ycheckcmdsyntax
+        eval_keyword = SCRIPT_line
+
+*        FIND eval_keyword IN 'const' :@FM: 'field' :@FM: 'func' :@FM: 'globalvar' :@FM: 'subr' SETTING a_dummy ELSE
+        FIND eval_keyword IN 'const' :@FM: 'field' :@FM: 'func' :@FM: 'subr' SETTING a_dummy ELSE
+            ERROR_message = 'Command "move": keyword ' : DQUOTE(eval_keyword) : ' is not supported'
+            EXIT_code = 43
+            GOSUB doexit
+        END
+
+        GOSUB ygetnextline
+        GOSUB ycheckcmdsyntax
+
+        IF eval_keyword NE 'func' THEN
+            macro_qty = INMAT(MACRO_list)
+            FOR i = 1 TO macro_qty
+                macro_spec = '$' : MACRO_name_list<i> : '$'
+                macro_val = MACRO_list(i)
+                IF INDEX(SCRIPT_line, macro_spec, 1) THEN CHANGE macro_spec TO macro_val IN SCRIPT_line
+            NEXT i
+        END
+        eval_cmd = SCRIPT_line
+
+        IF CMD_line EQ 'default' THEN   ;* don't do it if it's already assigned
+            FIND MACRO_name IN MACRO_name_list SETTING posn ELSE posn = 0
+            IF posn GT 0 THEN RETURN
+        END
+
+        BEGIN CASE
+        CASE eval_keyword EQ 'const'
+
+            MACRO_value = eval_cmd
+            GOSUB ysetmacro
+
+        CASE eval_keyword EQ 'field'
+            FLD_name = eval_cmd
+            GOSUB yfindfield
+
+            IF IS_lref THEN
+                MACRO_value = RECORD_curr<LOCREF_posn, LREF_posn>
+            END ELSE MACRO_value = RECORD_curr<FLD_posn>
+            GOSUB ysetmacro
+
+        CASE eval_keyword EQ 'subr'
+            subr_name = FIELD(eval_cmd, ' ', 1)
+            data_in = FIELD(eval_cmd, ' ', 2, 9999)
+            CALL @subr_name(data_out, data_in)     ;* TODO check if exists
+            MACRO_value = data_out
+            GOSUB ysetmacro
+
+        CASE eval_keyword EQ 'func'
+
+            CHANGE ' ' TO '' IN eval_cmd
+
+            parn_open = INDEX(eval_cmd, '(', 1)  ;  parn_close = INDEX(eval_cmd, ')', 1)
+
+            IF NOT(parn_open) OR NOT(parn_close) THEN
+                ERROR_message = 'One or both parentheses missing in function definition'
+                EXIT_code = 45
+                GOSUB doexit
+            END
+
+            IF INDEX(eval_cmd, '(', 2) OR INDEX(eval_cmd, ')', 2) THEN
+                ERROR_message = 'Only one set of parentheses allowed in function definition'
+                EXIT_code = 46
+                GOSUB doexit
+            END
+
+            func_name = eval_cmd[1, parn_open - 1]
+            args_raw_list = eval_cmd[parn_open + 1, (parn_close - 1 - parn_open)]
+            args_qty = DCOUNT(args_raw_list, ',')
+
+            FUNC_args = ''              ;* functions and number of allowed args (1 = 0 args, 2 = 1 arg etc)
+            FUNC_args<2> = '_ABS_ABSS_ALPHA_BYTELEN_CHAR_CHARS_LEN_RND_'
+            FUNC_args<3> = '_ADDS_ANDS_CATS_COUNT_DCOUNT_EQ_LEFT_NE_OCONV_RIGHT_'
+            FUNC_args<4> = '_CHANGE_CONVERT_'
+
+            IF NOT(INDEX(FUNC_args<args_qty+1>, func_name, 1)) THEN
+                ERROR_message = 'Function "{1}" not found in the list of functions with {2} parameter(s)'
+                CHANGE '{1}' TO func_name IN ERROR_message
+                CHANGE '{2}' TO args_qty IN ERROR_message
+                EXIT_code = 47
+                GOSUB doexit
+            END
+
+            DIM args_list(args_qty)
+            MAT args_list = ''
+
+            FOR i_arg = 1 TO args_qty
+                the_arg = FIELD(args_raw_list, ',' , i_arg)
+
+                macro_qty = INMAT(MACRO_list)
+                FOR i = 1 TO macro_qty
+                    macro_spec = '$' : MACRO_name_list<i> : '$'
+                    macro_val = MACRO_list(i)
+                    IF INDEX(the_arg, macro_spec, 1) THEN CHANGE macro_spec TO macro_val IN the_arg
+                NEXT i
+
+                args_list(i_arg) = the_arg
+
+            NEXT i_arg
+
+            BEGIN CASE
+            CASE func_name EQ 'ABS'
+                MACRO_value = ABS(args_list(1))
+
+            CASE func_name EQ 'ABSS'
+                MACRO_value = ABSS(args_list(1))
+
+            CASE func_name EQ 'ADDS'
+                MACRO_value = ADDS(args_list(1), args_list(2))
+
+            CASE func_name EQ 'ALPHA'
+                MACRO_value = ALPHA(args_list(1))
+
+            CASE func_name EQ 'ANDS'
+                MACRO_value = ANDS(args_list(1), args_list(2))
+
+            CASE func_name EQ 'BYTELEN'
+                MACRO_value = BYTELEN(args_list(1))
+
+            CASE func_name EQ 'CATS'
+                MACRO_value = CATS(args_list(1), args_list(2))
+
+            CASE func_name EQ 'CHANGE'
+                MACRO_value = CHANGE(args_list(1), args_list(2), args_list(3))
+
+            CASE func_name EQ 'CHAR'
+                MACRO_value = CHAR(args_list(1))
+
+            CASE func_name EQ 'CHARS'
+                MACRO_value = CHARS(args_list(1))
+
+            CASE func_name EQ 'CONVERT'
+                MACRO_value = CONVERT(args_list(1), args_list(2), args_list(3))
+
+            CASE func_name EQ 'COUNT'
+                MACRO_value = COUNT(args_list(1), args_list(2))
+
+            CASE func_name EQ 'DCOUNT'
+                MACRO_value = DCOUNT(args_list(1), args_list(2))
+
+            CASE func_name EQ 'EQ'
+                MACRO_value = (args_list(1) EQ args_list(2))
+
+            CASE func_name EQ 'LEFT'
+                MACRO_value = LEFT(args_list(1), args_list(2))
+
+            CASE func_name EQ 'LEN'
+                MACRO_value = LEN(args_list(1))
+
+            CASE func_name EQ 'NE'
+                MACRO_value = (args_list(1) NE args_list(2))
+
+            CASE func_name EQ 'OCONV'
+                MACRO_value = OCONV(args_list(1), args_list(2))
+
+            CASE func_name EQ 'RIGHT'
+                MACRO_value = RIGHT(args_list(1), args_list(2))
+
+            CASE func_name EQ 'RND'
+                MACRO_value = RND(args_list(1))
+
+            END CASE
+
+            GOSUB ysetmacro
+
+*DEBUG
+
+*
+
+*        CASE ...
+
+        END CASE
+    REPEAT
 
     RETURN
 
@@ -510,25 +934,19 @@ xecjump:
 xecread:
 
     IF RECORD_curr_init NE RECORD_curr THEN
-        ERROR_message = 'Changes not saved - ' : FILE_fname_list<FILE_no_curr>
+        ERROR_message = 'Changes not saved - {1}>{2}'
+        CHANGE '{1}' TO FILE_fname_list<FILE_no_curr> IN ERROR_message
+        CHANGE '{2}' TO RECORD_id_curr IN ERROR_message
         EXIT_code = 16
         GOSUB doexit
     END
 
     GOSUB ygetnextline
-    IF is_EOF OR SCRIPT_line[1, 1] NE ' ' THEN
-        ERROR_message = 'Command not finished properly'
-        EXIT_code = 18
-        GOSUB doexit
-    END
-    table_name = TRIM(SCRIPT_line, ' ', 'L')
+    GOSUB ycheckcmdsyntax
+    table_name = SCRIPT_line
 
     GOSUB ygetnextline
-    IF is_EOF OR SCRIPT_line[1, 1] NE ' ' THEN
-        ERROR_message = 'Command not finished properly'
-        EXIT_code = 18
-        GOSUB doexit
-    END
+    GOSUB ycheckcmdsyntax
     RECORD_id_curr = TRIM(SCRIPT_line, ' ', 'L')
 
     FIND table_name IN FILE_fname_list SETTING posn ELSE posn = 0
@@ -570,11 +988,71 @@ xecread:
     END
 
     RECORD_curr_init = RECORD_curr   ;* for comparison before commit
+    MACRO_list(10) = RECORD_curr   ;* can be addressed as $RECORD$
+
+    RETURN
+
+*----------------------------------------------------------------------------------------------------------------------------------
+xecselect:
+
+    GOSUB ygetnextline
+    GOSUB ycheckcmdsyntax
+    sel_list = SCRIPT_line
+
+    sel_cmd = 'SELECT'
+
+    LOOP
+        GOSUB ygetnextline
+        IF is_EOF THEN
+            IF sel_cmd EQ 'SELECT' THEN
+                ERROR_message = 'Command "{1}" at line {2} not finished properly'
+                CHANGE '{1}' TO CMD_line IN ERROR_message
+                CHANGE '{2}' TO CMD_line_no IN ERROR_message
+                EXIT_code = 18
+                GOSUB doexit
+            END
+            BREAK   ;* the very last command in the script - still we need to execute it to create saved list
+        END
+        IF SCRIPT_line[1, 1] NE ' ' THEN
+            GOSUB yrewind
+            BREAK
+        END
+
+        sel_cmd := ' ' : TRIM(SCRIPT_line, ' ', 'L')
+    REPEAT
+
+    IF sel_cmd EQ 'SELECT' THEN
+        ERROR_message = 'Command "{1}" at line {2} not finished properly'
+        CHANGE '{1}' TO CMD_line IN ERROR_message
+        CHANGE '{2}' TO CMD_line_no IN ERROR_message
+        EXIT_code = 18
+        GOSUB doexit
+    END
+
+    IF TAFJ_on THEN
+        EXECUTE sel_cmd :@FM: 'SAVE-LIST ' : sel_list CAPTURING output RETURNING ret_code          ;* supporting the empty result
+    END ELSE  ;*  241]1]sel_list]Savelist_msg after SPF., on empty/wrong file:  NODEFLIST]NODEFLIST (under tAFC but in TAFJ ret.code from 1st command)
+        EXECUTE sel_cmd CAPTURING output RTNLIST ret_list RETURNING ret_code          ;* RTNLIST doesn't work in TAFJ
+    END
+
+    IF ret_code<1,1> EQ 404 OR (ret_code<1,1> EQ 401 AND ret_code<1,2> EQ 'QLNONSEL') THEN
+        IF NOT(TAFJ_on) THEN WRITELIST ret_list TO sel_list
+    END ELSE
+        ERROR_message = 'SELECT error [' : sel_cmd : ']'
+        EXIT_code = 41
+        GOSUB doexit
+    END
 
     RETURN
 
 *----------------------------------------------------------------------------------------------------------------------------------
 xecupdate:
+
+    IF RECORD_id_curr EQ '' THEN
+        ERROR_message = 'No "read" command was executed yet'
+        EXIT_code = 44
+        GOSUB doexit
+    END
 
     updt_qty = 0
 
@@ -582,7 +1060,9 @@ xecupdate:
         GOSUB ygetnextline
 
         IF is_EOF THEN
-            ERROR_message = 'Command not finished properly'
+            ERROR_message = 'Command "{1}" at line {2} not finished properly'
+            CHANGE '{1}' TO CMD_line IN ERROR_message
+            CHANGE '{2}' TO CMD_line_no IN ERROR_message
             EXIT_code = 18
             GOSUB doexit
         END
@@ -599,7 +1079,7 @@ xecupdate:
         END
 
         updt_line = TRIM(SCRIPT_line, ' ', 'L')
-        fld_name = FIELD(updt_line, ':', 1)
+        FLD_name = FIELD(updt_line, ':', 1)
         vm_no = FIELD(updt_line, ':', 2)
         the_rest = FIELD(updt_line, ':', 3, 999999)
         sm_no = FIELD(the_rest, '=', 1)
@@ -617,41 +1097,20 @@ xecupdate:
             GOSUB doexit
         END
 
-        IF fld_name EQ 'LOCAL.REF' THEN
-            ERROR_message = 'Forbidden to update LOCAL.REF, use local field name'
+        IF FLD_name EQ 'LOCAL.REF' THEN
+            ERROR_message = 'Forbidden to specify LOCAL.REF, use local field name'
             EXIT_code = 24
             GOSUB doexit
         END
 
-        FIND fld_name IN DICT_list(FILE_no_curr) SETTING fld_posn ELSE fld_posn = 0
-
-        IF fld_posn GT 0 THEN
-            is_locref = @FALSE
-        END ELSE
-            FIND fld_name IN DICT_list_lref(FILE_no_curr) SETTING lr_posn ELSE lr_posn = 0
-            IF lr_posn GT 0 THEN
-                is_locref = @TRUE
-                IF LREF_posn EQ 0 THEN
-                    ERROR_message = 'LOCAL.REF not found in DICT of ' : FILE_fname_list<FILE_no_curr>
-                    EXIT_code = 25
-                    GOSUB doexit
-                END
-
-            END ELSE
-                ERROR_message = 'Field {1} not found in {2}'
-                CHANGE '{1}' TO fld_name IN ERROR_message
-                CHANGE '{2}' TO FILE_fname_list<FILE_no_curr> IN ERROR_message
-                EXIT_code = 23
-                GOSUB doexit
-            END
-        END
+        GOSUB yfindfield
 
         BEGIN CASE
 
         CASE vm_no EQ '' AND sm_no EQ ''
-            IF is_locref THEN
-                RECORD_curr<LREF_posn, lr_posn> = new_data
-            END ELSE RECORD_curr<fld_posn> = new_data
+            IF IS_lref THEN
+                RECORD_curr<LOCREF_posn, LREF_posn> = new_data
+            END ELSE RECORD_curr<FLD_posn> = new_data
 
         CASE (vm_no EQ '' OR vm_no EQ -1) AND sm_no NE ''
             ERROR_message = '@SM number requires @VM number to be set explicitly, for LOCAL.REF @SM set up in @VM place, e.g. MY.FIELD:2:=DATA'
@@ -659,17 +1118,17 @@ xecupdate:
             GOSUB doexit
 
         CASE vm_no NE '' AND sm_no EQ ''
-            IF is_locref THEN RECORD_curr<LREF_posn, lr_posn, vm_no> = new_data
-            ELSE RECORD_curr<fld_posn, vm_no> = new_data
+            IF IS_lref THEN RECORD_curr<LOCREF_posn, LREF_posn, vm_no> = new_data
+            ELSE RECORD_curr<FLD_posn, vm_no> = new_data
 
         CASE vm_no NE '' AND sm_no NE ''
-            IF is_locref THEN
+            IF IS_lref THEN
                 ERROR_message = 'Subvalue for LOCAL.REF is set up in @VM place, e.g. MY.FIELD:2:=DATA'
                 EXIT_code = 29
                 GOSUB doexit
             END
 
-            RECORD_curr<fld_posn, vm_no, sm_no> = new_data
+            RECORD_curr<FLD_posn, vm_no, sm_no> = new_data
 
         CASE OTHERWISE
             ERROR_message = 'Error parsing update command'
@@ -734,7 +1193,60 @@ ygetdict:
     DICT_list(FILE_no_curr) = dict_sel_list
     DICT_list_lref(FILE_no_curr) = dict_sel_list_lref
 
-    FIND 'LOCAL.REF' IN DICT_list(FILE_no_curr) SETTING LREF_posn ELSE LREF_posn = 0
+    FIND 'LOCAL.REF' IN DICT_list(FILE_no_curr) SETTING LOCREF_posn ELSE LOCREF_posn = 0
+
+    RETURN
+
+*----------------------------------------------------------------------------------------------------------------------------------
+ycheckcmdsyntax:
+* check if command contains all mandatory data
+
+    IF is_EOF OR SCRIPT_line[1, 1] NE ' ' THEN
+        ERROR_message = 'Command "{1}" at line {2} not finished properly'
+        CHANGE '{1}' TO CMD_line IN ERROR_message
+        CHANGE '{2}' TO CMD_line_no IN ERROR_message
+        EXIT_code = 18
+        GOSUB doexit
+    END
+
+    SCRIPT_line = TRIM(SCRIPT_line, ' ', 'L')
+
+    RETURN
+
+*----------------------------------------------------------------------------------------------------------------------------------
+yfindfield:
+* in: FLD_name
+* out FLD_posn, IS_lref, LREF_posn
+
+    IF RECORD_id_curr EQ '' THEN
+        ERROR_message = 'No "read" command was executed yet'
+        EXIT_code = 44
+        GOSUB doexit
+    END
+
+    FIND FLD_name IN DICT_list(FILE_no_curr) SETTING FLD_posn ELSE FLD_posn = 0
+
+    IF FLD_posn GT 0 THEN
+        IS_lref = @FALSE
+    END ELSE
+        FIND FLD_name IN DICT_list_lref(FILE_no_curr) SETTING LREF_posn ELSE LREF_posn = 0
+        IF LREF_posn GT 0 THEN
+            IF LOCREF_posn EQ 0 THEN
+                ERROR_message = 'LOCAL.REF not found in DICT of ' : FILE_fname_list<FILE_no_curr>
+                EXIT_code = 25
+                GOSUB doexit
+            END
+            IS_lref = @TRUE
+
+        END ELSE
+            ERROR_message = 'Field {1} not found in {2}'
+            CHANGE '{1}' TO FLD_name IN ERROR_message
+            CHANGE '{2}' TO FILE_fname_list<FILE_no_curr> IN ERROR_message
+            EXIT_code = 23
+            GOSUB doexit
+        END
+    END
+
 
     RETURN
 
@@ -762,11 +1274,113 @@ ygetnextline:
 
     REPEAT
 
+    IF CMD_line NE 'move' THEN
+        macro_qty = INMAT(MACRO_list)
+        FOR i = 1 TO macro_qty
+            macro_spec = '$' : MACRO_name_list<i> : '$'
+            macro_val = MACRO_list(i)
+            IF INDEX(SCRIPT_line, macro_spec, 1) THEN CHANGE macro_spec TO macro_val IN SCRIPT_line
+        NEXT i
+    END
+
+    RETURN
+
+*-------------------------------------------------------------------------------------
+yjump:
+* in: LBL_togo
+* out: SCRIPT_line_no
+
+    FIND LBL_togo IN LBL_list SETTING posn ELSE posn = 0
+    IF posn EQ 0 THEN
+        ERROR_message = 'Label not found (' : LBL_togo : ')'
+        EXIT_code = 20
+        GOSUB doexit
+    END
+
+    SCRIPT_line_no = LBL_posn_list<posn>
+
+    RETURN
+
+*-------------------------------------------------------------------------------------
+ylaunchofs:
+* in: ofs_msg, DEL_on_err
+
+    commit_successful = 0
+    ofs_ok = @TRUE
+
+    HUSH ON
+    CALL OFS.BULK.MANAGER(ofs_msg, ofs_output, commit_successful)
+    HUSH OFF
+
+    ERROR_message = 'OFS error'
+
+    IF NOT(commit_successful) THEN
+        ofs_ok = @FALSE
+        ERROR_message := ': ' : ofs_output
+    END
+
+    IF ofs_ok THEN ERROR_message = ''
+    ELSE
+
+        IF DEL_on_err THEN
+            DELETE f_nau, RECORD_id_curr ON ERROR NULL
+        END
+
+        EXIT_code = 39
+        GOSUB doexit
+    END
+
+    RETURN
+
+*----------------------------------------------------------------------------------------------------------------------------------
+yloadcompany:
+* in: COMPANY_curr
+
+    CALL LOAD.COMPANY(COMPANY_curr)
+    MACRO_list(1) = TODAY
+    MACRO_list(2) = LCCY
+    MACRO_list(3) = ID.COMPANY
+
+    RETURN
+
+*----------------------------------------------------------------------------------------------------------------------------------
+yprocalertmsg:
+
+    CHANGE @FM TO '(@FM)' IN ALERT_msg
+    CHANGE @VM TO '(@VM)' IN ALERT_msg
+    CHANGE @SM TO '(@SM)' IN ALERT_msg
+    CHANGE @TM TO '(@TM)' IN ALERT_msg
+
+    RETURN
+
+*----------------------------------------------------------------------------------------------------------------------------------
+ysetmacro:
+* in: MACRO_name, MACRO_value
+* out: updated MACRO_list, [MACRO_name_list - if it's new]
+
+    FIND MACRO_name IN MACRO_name_list SETTING posn ELSE posn = 0
+    IF posn EQ 0 THEN
+        posn = INMAT(MACRO_list)
+        posn ++
+        DIM MACRO_list(posn)
+        MACRO_name_list<-1> = MACRO_name
+    END ELSE
+        IF UPCASE(MACRO_name) EQ MACRO_name THEN
+            ERROR_message = 'Uppercase macro ({1}) can not be reassigned'
+            CHANGE '{1}' TO MACRO_name IN ERROR_message
+            EXIT_code = 48
+            GOSUB doexit
+        END
+    END
+
+    MACRO_list(posn) = MACRO_value
+
     RETURN
 
 *----------------------------------------------------------------------------------------------------------------------------------
 yrewind:
 * rewind script back in case when optional command component is missing
+* one line only; we don't need to skip empty lines/comments/labels that might have been skipped on the way forward - not to parse them again
 
     SCRIPT_line_no --
 
