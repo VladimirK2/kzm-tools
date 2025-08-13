@@ -29,10 +29,10 @@ doexit:
     END
 
     IF EXIT_code NE 0 THEN
-        CRT ERROR_message
+        CRT '[ERROR] ' : ERROR_message
         CRT 'Exit code: ' : EXIT_code
         IF SCRIPT_line_no GT 0 THEN CRT 'Script line: ' : SCRIPT_line_no
-    END ELSE CRT 'Finished successfully'
+    END ELSE CRT '[INFO] Finished successfully'
 
     CRT 'Elapsed time: ' : FMT(TIMESTAMP() - START_time, 'R2') : ' s.'
     EXIT(EXIT_code)
@@ -116,6 +116,8 @@ initvars:
     CLOSE f_mnem_cmp
 
     MACRO_name_list = 'TODAY' :@FM: 'LCCY' :@FM: 'ID.COMPANY' :@FM: 'FM' :@FM: 'VM' :@FM: 'SM' :@FM: 'TM' :@FM: 'SPACE' :@FM: 'BLANK' :@FM: 'RECORD'
+    MACRO_name_list := @FM: 'EXECSCREEN' :@FM: 'EXECRETCODE' :@FM: 'EXECRETDATA' :@FM: 'EXECRETLIST' :@FM: 'CRLF'
+
     DIM MACRO_list(DCOUNT(MACRO_name_list, @FM))     ;* will expand dynamically
     MAT MACRO_list = ''
     MACRO_name = ''
@@ -126,8 +128,7 @@ initvars:
     MACRO_list(6) = @SM
     MACRO_list(7) = @TM
     MACRO_list(8) = ' '
-*    MACRO_list(9) = ''
-*    MACRO_list(10) = ''
+    MACRO_list(15) = CHAR(10)
 
     GOSUB yloadcompany
 
@@ -223,7 +224,7 @@ parseparams:
         CASE par_name EQ '-p'
             T24_passwd = FIELD(a_param, ':', 2, 99)
 
-        CASE OTHERWISE
+        CASE 1
             ERROR_message = 'Unrecognized parameter ' : DQUOTE(a_param)
             EXIT_code = 6
             GOSUB doexit
@@ -360,11 +361,12 @@ runscript:
         CASE CMD_line EQ 'getnext'     ;     GOSUB xecgetnext
         CASE CMD_line EQ 'jump'        ;     GOSUB xecjump
         CASE CMD_line EQ 'move'        ;     GOSUB xecmove
+        CASE CMD_line EQ 'precision'   ;     GOSUB xecprecision
         CASE CMD_line EQ 'read'        ;     GOSUB xecread
         CASE CMD_line EQ 'select'      ;     GOSUB xecselect
         CASE CMD_line EQ 'update'      ;     GOSUB xecupdate
 
-        CASE OTHERWISE
+        CASE 1
             ERROR_message = 'Command not recognized (' : DQUOTE(SCRIPT_line) : ')'
             EXIT_code = 17
             GOSUB doexit
@@ -632,10 +634,35 @@ xecexec:
     GOSUB ycheckcmdsyntax
     exec_cmd = SCRIPT_line
 
-    EXECUTE exec_cmd RETURNING ret_code RTNDATA ret_data RTNLIST ret_list
+* optional expected return code
+
+    GOSUB ygetnextline
+    IF SCRIPT_line[1, 1] NE ' ' THEN
+        check_ret_code = @FALSE
+        GOSUB yrewind
+    END ELSE
+        check_ret_code = @TRUE
+        exp_ret_code = TRIM(SCRIPT_line, ' ', 'L')
+    END
+
+    EXECUTE exec_cmd CAPTURING exec_screen RETURNING exec_ret_code RTNDATA exec_ret_data RTNLIST exec_ret_list
+    MACRO_list(11) = exec_screen
+    MACRO_list(12) = exec_ret_code
+    MACRO_list(13) = exec_ret_data
+    MACRO_list(14) = exec_ret_list
+
+    IF check_ret_code AND exec_ret_code NE exp_ret_code THEN
+        ERROR_message = 'Command at the line {1}: return code "{2}", expected : "{3}"'
+        CHANGE '{1}' TO SCRIPT_line_no IN ERROR_message
+        CHANGE '{2}' TO CONVERT(@FM:@VM:@SM, '^]\', exec_ret_code) IN ERROR_message
+        CHANGE '{3}' TO CONVERT(@FM:@VM:@SM, '^]\', exp_ret_code) IN ERROR_message
+        EXIT_code = 56
+        GOSUB doexit
+    END
+
     info_msg = '[INFO] Command at the line {1}: return code "{2}"'
     CHANGE '{1}' TO SCRIPT_line_no IN info_msg
-    CHANGE '{2}' TO CONVERT(@FM:@VM:@SM, '^]\', ret_code) IN info_msg
+    CHANGE '{2}' TO CONVERT(@FM:@VM:@SM, '^]\', exec_ret_code) IN info_msg
     INFO_list<-1> = info_msg
 
     RETURN
@@ -824,10 +851,19 @@ xecmove:
             args_raw_list = eval_cmd[parn_open + 1, (parn_close - 1 - parn_open)]
             args_qty = DCOUNT(args_raw_list, ',')
 
-            FUNC_args = ''              ;* functions and number of allowed args (1 = 0 args, 2 = 1 arg etc)
-            FUNC_args<2> = '_ABS_ABSS_ALPHA_BYTELEN_CHAR_CHARS_LEN_RND_'
-            FUNC_args<3> = '_ADDS_ANDS_CATS_COUNT_DCOUNT_EQ_LEFT_NE_OCONV_RIGHT_'
-            FUNC_args<4> = '_CHANGE_CONVERT_'
+            FUNC_args = '_DATE_TIME_'              ;* functions and number of allowed args (1 = 0 args, 2 = 1 arg etc)
+            FUNC_args<2> = '_ABS_ABSS_ALPHA_BYTELEN_CHAR_CHARS_DIR_DOWNCASE_DROUND_DTX_LEN_RND_'
+            FUNC_args<3> = '_ADDS_ANDS_CATS_COUNT_COUNTS_DCOUNT_DEL_DIV_DIVS_DROUND_EQ_EQS_EXTRACT_FMT_LEFT_NE_OCONV_RIGHT_'
+            FUNC_args<4> = '_CHANGE_CONVERT_DEL_EREPLACE_EXTRACT_'
+            FUNC_args<5> = '_DEL_EREPLACE_EXTRACT_'
+            FUNC_args<6> = '_EREPLACE_'
+
+            macro_qty = INMAT(MACRO_list)
+            FOR i = 1 TO macro_qty
+                macro_spec = '$' : MACRO_name_list<i> : '$'
+                macro_val = MACRO_list(i)
+                IF INDEX(func_name, macro_spec, 1) THEN CHANGE macro_spec TO macro_val IN func_name
+            NEXT i
 
             IF NOT(INDEX(FUNC_args<args_qty+1>, func_name, 1)) THEN
                 ERROR_message = 'Function "{1}" not found in the list of functions with {2} parameter(s)'
@@ -891,11 +927,73 @@ xecmove:
             CASE func_name EQ 'COUNT'
                 MACRO_value = COUNT(args_list(1), args_list(2))
 
+            CASE func_name EQ 'COUNTS'
+                MACRO_value = COUNTS(args_list(1), args_list(2))
+
+            CASE func_name EQ 'DATE'
+                MACRO_value = DATE()
+
             CASE func_name EQ 'DCOUNT'
                 MACRO_value = DCOUNT(args_list(1), args_list(2))
 
+            CASE func_name EQ 'DEL'
+                BEGIN CASE
+                CASE args_qty EQ 2
+                    DEL args_list(1)<args_list(2)>
+                CASE args_qty EQ 3
+                    DEL args_list(1)<args_list(2), args_list(3)>
+                CASE args_qty EQ 4
+                    DEL args_list(1)<args_list(2), args_list(3), args_list(4)>
+                END CASE
+                MACRO_value = args_list(1)
+
+            CASE func_name EQ 'DIR'
+                MACRO_value = DIR(args_list(1))
+
+            CASE func_name EQ 'DIV'
+                MACRO_value = DIV(args_list(1), args_list(2))
+
+            CASE func_name EQ 'DIVS'
+                MACRO_value = DIVS(args_list(1), args_list(2))
+
+            CASE func_name EQ 'DOWNCASE'
+                MACRO_value = DOWNCASE(args_list(1))
+
+            CASE func_name EQ 'DROUND'
+                IF args_qty EQ 2 THEN MACRO_value = DROUND(args_list(1), args_list(2))
+                ELSE MACRO_value = DROUND(args_list(1))
+
+            CASE func_name EQ 'DTX'
+                MACRO_value = DTX(args_list(1))
+
             CASE func_name EQ 'EQ'
                 MACRO_value = (args_list(1) EQ args_list(2))
+
+            CASE func_name EQ 'EQS'
+                MACRO_value = EQS(args_list(1), args_list(2))
+
+            CASE func_name EQ 'EREPLACE'
+                BEGIN CASE
+                CASE args_qty EQ 3
+                    MACRO_value = EREPLACE(args_list(1), args_list(2), args_list(3))
+                CASE args_qty EQ 4
+                    MACRO_value = EREPLACE(args_list(1), args_list(2), args_list(3), args_list(4))
+                CASE args_qty EQ 5
+                    MACRO_value = EREPLACE(args_list(1), args_list(2), args_list(3), args_list(4), args_list(5))
+                END CASE
+
+            CASE func_name EQ 'EXTRACT'
+                BEGIN CASE
+                CASE args_qty EQ 2
+                    MACRO_value = EXTRACT(args_list(1), args_list(2))
+                CASE args_qty EQ 3
+                    MACRO_value = EXTRACT(args_list(1), args_list(2), args_list(3))
+                CASE args_qty EQ 4
+                    MACRO_value = EXTRACT(args_list(1), args_list(2), args_list(3), args_list(4))
+                END CASE
+
+            CASE func_name EQ 'FMT'
+                MACRO_value = FMT(args_list(1), args_list(2))
 
             CASE func_name EQ 'LEFT'
                 MACRO_value = LEFT(args_list(1), args_list(2))
@@ -915,18 +1013,30 @@ xecmove:
             CASE func_name EQ 'RND'
                 MACRO_value = RND(args_list(1))
 
+            CASE func_name EQ 'TIME'
+                MACRO_value = TIME()
+
             END CASE
 
             GOSUB ysetmacro
 
-*DEBUG
-
-*
-
-*        CASE ...
-
         END CASE
     REPEAT
+
+    RETURN
+
+*----------------------------------------------------------------------------------------------------------------------------------
+xecprecision:
+
+    GOSUB ygetnextline
+    GOSUB ycheckcmdsyntax
+    IF NOT(ISDIGIT(SCRIPT_line)) THEN
+        ERROR_message = 'Non-numeric PRECISION detected'
+        EXIT_code = 55
+        GOSUB doexit
+    END
+
+    PRECISION SCRIPT_line
 
     RETURN
 
@@ -1130,7 +1240,7 @@ xecupdate:
 
             RECORD_curr<FLD_posn, vm_no, sm_no> = new_data
 
-        CASE OTHERWISE
+        CASE 1
             ERROR_message = 'Error parsing update command'
             EXIT_code = 30
             GOSUB doexit
@@ -1270,6 +1380,24 @@ ygetnextline:
 
         IF TRIM(SCRIPT_line, ' ', 'L') EQ '' THEN CONTINUE
 
+        IF first_char EQ '=' THEN   ;* conditional TAFC/TAFJ processing
+            BEGIN CASE
+            CASE LEFT(SCRIPT_line, 6) EQ '=TAFC '
+                IF TAFJ_on THEN CONTINUE
+                ELSE SCRIPT_line = SCRIPT_line[6, 999999]
+
+            CASE LEFT(SCRIPT_line, 6) EQ '=TAFJ '
+                IF NOT(TAFJ_on) THEN CONTINUE
+                ELSE SCRIPT_line = SCRIPT_line[6, 999999]
+
+            CASE 1
+                ERROR_message = 'Wrong syntax'
+                EXIT_code = 54
+                GOSUB doexit
+
+            END CASE
+        END
+
         BREAK
 
     REPEAT
@@ -1346,10 +1474,10 @@ yloadcompany:
 *----------------------------------------------------------------------------------------------------------------------------------
 yprocalertmsg:
 
-    CHANGE @FM TO '(@FM)' IN ALERT_msg
-    CHANGE @VM TO '(@VM)' IN ALERT_msg
-    CHANGE @SM TO '(@SM)' IN ALERT_msg
-    CHANGE @TM TO '(@TM)' IN ALERT_msg
+    CHANGE @FM TO ' (@FM) ' IN ALERT_msg
+    CHANGE @VM TO ' (@VM) ' IN ALERT_msg
+    CHANGE @SM TO ' (@SM) ' IN ALERT_msg
+    CHANGE @TM TO ' (@TM) ' IN ALERT_msg
 
     RETURN
 
