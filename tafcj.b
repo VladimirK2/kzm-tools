@@ -851,11 +851,12 @@ xecmove:
             args_raw_list = eval_cmd[parn_open + 1, (parn_close - 1 - parn_open)]
             args_qty = DCOUNT(args_raw_list, ',')
 
-            FUNC_args = '_DATE_TIME_'              ;* functions and number of allowed args (1 = 0 args, 2 = 1 arg etc)
-            FUNC_args<2> = '_ABS_ABSS_ALPHA_BYTELEN_CHAR_CHARS_DIR_DOWNCASE_DROUND_DTX_LEN_RND_'
-            FUNC_args<3> = '_ADDS_ANDS_CATS_COUNT_COUNTS_DCOUNT_DEL_DIV_DIVS_DROUND_EQ_EQS_EXTRACT_FMT_LEFT_NE_OCONV_RIGHT_'
-            FUNC_args<4> = '_CHANGE_CONVERT_DEL_EREPLACE_EXTRACT_'
-            FUNC_args<5> = '_DEL_EREPLACE_EXTRACT_'
+            FUNC_args = '_DATE_TIME_FILEINFO_GETCWD_'              ;* functions and number of allowed args (1 = 0 args, 2 = 1 arg etc)
+            FUNC_args<2> = '_ABS_ABSS_ALPHA_BYTELEN_CHAR_CHARS_DIR_DOWNCASE_DROUND_DTX_GETENV_LEN_RND_'
+            FUNC_args<3> = '_ADDS_ANDS_CATS_COUNT_COUNTS_DCOUNT_DEL_DIV_DIVS_DROUND_EQ_EQS_EXTRACT_FADD_FDIV_FIND_FINDSTR_FMUL_FMT_FMTS_LEFT_NE_OCONV_RIGHT_'
+            FUNC_args<3> := '_FOLD_FSUB_GE_GES_'
+            FUNC_args<4> = '_CHANGE_CONVERT_DEL_EREPLACE_EXTRACT_FIELD_FIELDS_FIND_FINDSTR_'
+            FUNC_args<5> = '_DEL_EREPLACE_EXTRACT_FIELD_FIELDS_'
             FUNC_args<6> = '_EREPLACE_'
 
             macro_qty = INMAT(MACRO_list)
@@ -992,8 +993,83 @@ xecmove:
                     MACRO_value = EXTRACT(args_list(1), args_list(2), args_list(3), args_list(4))
                 END CASE
 
+            CASE func_name EQ 'FADD'
+                MACRO_value = FADD(args_list(1), args_list(2))
+
+            CASE func_name EQ 'FDIV'
+                MACRO_value = FDIV(args_list(1), args_list(2))
+
+            CASE func_name EQ 'FMUL'
+                MACRO_value = FMUL(args_list(1), args_list(2))
+
+            CASE func_name EQ 'FIELD'
+                IF args_qty EQ 3 THEN MACRO_value = FIELD(args_list(1), args_list(2), args_list(3))
+                ELSE MACRO_value = FIELD(args_list(1), args_list(2), args_list(3), args_list(4))
+
+            CASE func_name EQ 'FIELDS'
+                IF args_qty EQ 3 THEN MACRO_value = FIELDS(args_list(1), args_list(2), args_list(3))
+                ELSE MACRO_value = FIELDS(args_list(1), args_list(2), args_list(3), args_list(4))
+
+            CASE func_name EQ 'FILEINFO'
+                MACRO_value = FILEINFO(FILE_handle_list(FILE_no_curr), 1)
+
+            CASE func_name EQ 'FIND'
+                IF args_qty EQ 2 THEN
+                    FIND args_list(1) IN args_list(2) SETTING fm_posn, vm_posn, sm_posn ELSE
+                        fm_posn = -1
+                        vm_posn = -1
+                        sm_posn = -1
+                    END
+                END ELSE
+                    FIND args_list(1) IN args_list(2), args_list(3) SETTING fm_posn, vm_posn, sm_posn ELSE
+                        fm_posn = -1
+                        vm_posn = -1
+                        sm_posn = -1
+                    END
+                END
+
+                MACRO_value = fm_posn :@FM: vm_posn :@FM: sm_posn
+
+            CASE func_name EQ 'FINDSTR'
+                IF args_qty EQ 2 THEN
+                    FINDSTR args_list(1) IN args_list(2) SETTING fm_posn, vm_posn, sm_posn ELSE
+                        fm_posn = -1
+                        vm_posn = -1
+                        sm_posn = -1
+                    END
+                END ELSE
+                    FINDSTR args_list(1) IN args_list(2), args_list(3) SETTING fm_posn, vm_posn, sm_posn ELSE
+                        fm_posn = -1
+                        vm_posn = -1
+                        sm_posn = -1
+                    END
+                END
+
+                MACRO_value = fm_posn :@FM: vm_posn :@FM: sm_posn
+
             CASE func_name EQ 'FMT'
                 MACRO_value = FMT(args_list(1), args_list(2))
+
+            CASE func_name EQ 'FMTS'
+                MACRO_value = FMTS(args_list(1), args_list(2))
+
+            CASE func_name EQ 'FOLD'
+                MACRO_value = FOLD(args_list(1), args_list(2))
+
+            CASE func_name EQ 'FSUB'
+                MACRO_value = FSUB(args_list(1), args_list(2))
+
+            CASE func_name EQ 'GE'
+                MACRO_value = (args_list(1) GE args_list(2))
+
+            CASE func_name EQ 'GES'
+                MACRO_value = GES(args_list(1), args_list(2))
+
+            CASE func_name EQ 'GETCWD'
+                IF GETCWD(MACRO_value) THEN NULL
+
+            CASE func_name EQ 'GETENV'
+                IF GETENV(args_list(1), MACRO_value) THEN NULL
 
             CASE func_name EQ 'LEFT'
                 MACRO_value = LEFT(args_list(1), args_list(2))
@@ -1474,10 +1550,19 @@ yloadcompany:
 *----------------------------------------------------------------------------------------------------------------------------------
 yprocalertmsg:
 
-    CHANGE @FM TO ' (@FM) ' IN ALERT_msg
-    CHANGE @VM TO ' (@VM) ' IN ALERT_msg
-    CHANGE @SM TO ' (@SM) ' IN ALERT_msg
-    CHANGE @TM TO ' (@TM) ' IN ALERT_msg
+    IF TAFJ_on THEN
+        CHANGE @FM TO ' (@FM) ' IN ALERT_msg
+        CHANGE @VM TO ' (@VM) ' IN ALERT_msg
+        CHANGE @SM TO ' (@SM) ' IN ALERT_msg
+        CHANGE @TM TO ' (@TM) ' IN ALERT_msg
+    END ELSE
+
+        CHANGE @FM TO @(-175) : '@FM' : @(-128) IN ALERT_msg
+        CHANGE @VM TO @(-180) : '@VM' : @(-128) IN ALERT_msg
+        CHANGE @SM TO @(-178) : '@SM' : @(-128) IN ALERT_msg
+        CHANGE @TM TO @(-176) : '@TM' : @(-128) IN ALERT_msg
+
+    END
 
     RETURN
 
@@ -1493,7 +1578,7 @@ ysetmacro:
         DIM MACRO_list(posn)
         MACRO_name_list<-1> = MACRO_name
     END ELSE
-        IF UPCASE(MACRO_name) EQ MACRO_name THEN
+        IF NOT(ISDIGIT(MACRO_name)) AND UPCASE(MACRO_name) EQ MACRO_name THEN
             ERROR_message = 'Uppercase macro ({1}) can not be reassigned'
             CHANGE '{1}' TO MACRO_name IN ERROR_message
             EXIT_code = 48
