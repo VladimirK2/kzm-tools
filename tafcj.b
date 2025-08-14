@@ -117,6 +117,7 @@ initvars:
 
     MACRO_name_list = 'TODAY' :@FM: 'LCCY' :@FM: 'ID.COMPANY' :@FM: 'FM' :@FM: 'VM' :@FM: 'SM' :@FM: 'TM' :@FM: 'SPACE' :@FM: 'BLANK' :@FM: 'RECORD'
     MACRO_name_list := @FM: 'EXECSCREEN' :@FM: 'EXECRETCODE' :@FM: 'EXECRETDATA' :@FM: 'EXECRETLIST' :@FM: 'LF' :@FM: 'TAB' :@FM: 'DIR_DELIM_CH'
+    MACRO_name_list := @FM: 'COMMA' :@FM: 'LPARENTH' :@FM: 'RPARENTH'
 
     DIM MACRO_list(DCOUNT(MACRO_name_list, @FM))     ;* will expand dynamically
     MAT MACRO_list = ''
@@ -131,6 +132,9 @@ initvars:
     MACRO_list(15) = CHAR(10)
     MACRO_list(16) = CHAR(9)
     MACRO_list(17) = DIR_DELIM_CH
+    MACRO_list(18) = ','
+    MACRO_list(19) = '('
+    MACRO_list(20) = ')'
 
     GOSUB yloadcompany
 
@@ -857,19 +861,22 @@ xecmove:
             args_qty = DCOUNT(args_raw_list, ',')
 
 * no args
-            FUNC_args = '_DATE_TIME_FILEINFO_GETCWD_INPUT_TIMEDATE_'
+            FUNC_args = '_DATE_TIME_FILEINFO_GETCWD_INPUT_TIMEDATE_TIMESTAMP_'
 * 1 arg
             FUNC_args<2> = '_ABS_ABSS_ALPHA_BYTELEN_CHAR_CHARS_DIR_DOWNCASE_DQUOTE_DROUND_DTX_GETENV_LEN_LENS_RND_INPUT_INT_ISALPHA_ISALNUM_ISCNTRL_ISDIGIT_ISLOWER_'
-            FUNC_args<2> := 'ISPRINT_ISSPACE_ISUPPER_LOWER_MAXIMUM_MINIMUM_NEG_NEGS_NOT_NOTS_RAISE_SQUOTE_'
+            FUNC_args<2> := 'ISPRINT_ISSPACE_ISUPPER_LOWER_MAXIMUM_MINIMUM_NEG_NEGS_NOT_NOTS_NUM_NUMS_PUTENV_RAISE_SENTENCE_SEQ_SEQS_SORT_SPACE_SPACES_SQRT_SQUOTE_'
+            FUNC_args<2> := 'SUM_TRIM_'
 * 2 args
             FUNC_args<3> = '_ADDS_ANDS_CATS_CHANGETIMESTAMP_COUNT_COUNTS_DCOUNT_DEL_DIV_DIVS_DROUND_EQ_EQS_EXTRACT_FADD_FDIV_FIND_FINDSTR_FMUL_FMT_FMTS_FOLD_FSUB_'
-            FUNC_args<3> := 'GE_GES_GT_ICONV_ICONVS_LE_LEFT_LES_LOCALDATE_LOCALTIME_MATCHES_MOD_MODS_MULS_NE_NES_OCONV_RIGHT_STR_'
+            FUNC_args<3> := 'GE_GES_GT_ICONV_ICONVS_LE_LEFT_LES_LOCALDATE_LOCALTIME_MATCHES_MOD_MODS_MULS_NE_NES_OCONV_OCONVS_ORS_PWR_REGEXP_RIGHT_SADD_SDIV_SMUL_'
+            FUNC_args<3> := 'STR_STRS_SSUB_SUBS_TRIM_'
 * 3 args
-            FUNC_args<4> = '_CHANGE_CONVERT_DEL_EREPLACE_EXTRACT_FIELD_FIELDS_FIND_FINDSTR_IFS_INDEX_INS_MAKETIMESTAMP_MATCHFIELD_SUBSTRINGS_'
+            FUNC_args<4> =  '_CHANGE_CONVERT_DEL_EREPLACE_EXTRACT_FIELD_FIELDS_FIND_FINDSTR_IFS_INDEX_INS_MAKETIMESTAMP_MATCHFIELD_REPLACE_SPLICE_SUBSTRINGS_'
+            FUNC_args<4> := 'TIMEDIFF_TRIM_'
 * 4 args
-            FUNC_args<5> = '_DEL_EREPLACE_EXTRACT_FIELD_FIELDS_INS_'
+            FUNC_args<5> = '_DEL_EREPLACE_EXTRACT_FIELD_FIELDS_INS_REPLACE_TRANS_'
 * 5 args
-            FUNC_args<6> = '_EREPLACE_INS_'
+            FUNC_args<6> = '_EREPLACE_INS_REPLACE_'
 
             macro_qty = INMAT(MACRO_list)
             FOR i = 1 TO macro_qty
@@ -1215,11 +1222,42 @@ xecmove:
             CASE func_name EQ 'NOTS'
                 MACRO_value = NOTS(args_list(1))
 
+            CASE func_name EQ 'NUM'
+                MACRO_value = NUM(args_list(1))
+
+            CASE func_name EQ 'NUMS'
+                MACRO_value = NUMS(args_list(1))
+
             CASE func_name EQ 'OCONV'
                 MACRO_value = OCONV(args_list(1), args_list(2))
 
+            CASE func_name EQ 'OCONVS'
+                MACRO_value = OCONVS(args_list(1), args_list(2))
+
+            CASE func_name EQ 'ORS'
+                MACRO_value = ORS(args_list(1), args_list(2))
+
+            CASE func_name EQ 'PUTENV'
+                MACRO_value = PUTENV(args_list(1))
+
+            CASE func_name EQ 'PWR'
+                MACRO_value = PWR(args_list(1), args_list(2))
+
             CASE func_name EQ 'RAISE'
                 MACRO_value = RAISE(args_list(1))
+
+            CASE func_name EQ 'REGEXP'
+                MACRO_value = REGEXP(args_list(1), args_list(2))
+
+            CASE func_name EQ 'REPLACE'
+                BEGIN CASE
+                CASE args_qty EQ 3
+                    MACRO_value = REPLACE(args_list(1), args_list(2); args_list(3))
+                CASE args_qty EQ 4
+                    MACRO_value = REPLACE(args_list(1), args_list(2), args_list(3); args_list(4))
+                CASE args_qty EQ 5
+                    MACRO_value = REPLACE(args_list(1), args_list(2), args_list(3), args_list(4); args_list(5))
+                END CASE
 
             CASE func_name EQ 'RIGHT'
                 MACRO_value = RIGHT(args_list(1), args_list(2))
@@ -1227,8 +1265,55 @@ xecmove:
             CASE func_name EQ 'RND'
                 MACRO_value = RND(args_list(1))
 
+            CASE func_name EQ 'SADD'
+                MACRO_value = SADD(args_list(1), args_list(2))
+
+            CASE func_name EQ 'SDIV'
+                MACRO_value = SDIV(args_list(1), args_list(2))
+
+            CASE func_name EQ 'SENTENCE'
+                MACRO_value = SENTENCE(args_list(1))
+
+            CASE func_name EQ 'SEQ'
+                MACRO_value = SEQ(args_list(1))
+
+            CASE func_name EQ 'SEQS'
+*                MACRO_value = SEQS(args_list(1))          ;* uncomment under TAFC - doesn't compile under tAFJ
+                IF TAFJ_on THEN
+                    ERROR_message = 'Function SEQS is not supported'
+                    EXIT_code = 999
+                    GOSUB doexit
+                END
+
+            CASE func_name EQ 'SMUL'
+                MACRO_value = SMUL(args_list(1), args_list(2))
+
+            CASE func_name EQ 'SORT'
+                MACRO_value = SORT(args_list(1))
+
+            CASE func_name EQ 'SPACE'
+                MACRO_value = SPACE(args_list(1))
+
+            CASE func_name EQ 'SPACES'
+                MACRO_value = SPACES(args_list(1))
+
+            CASE func_name EQ 'SPLICE'
+                MACRO_value = SPLICE(args_list(1), args_list(2), args_list(3))
+
+            CASE func_name EQ 'SQRT'
+                MACRO_value = SQRT(args_list(1))
+
+            CASE func_name EQ 'SSUB'
+                MACRO_value = SSUB(args_list(1), args_list(2))
+
             CASE func_name EQ 'STR'
                 MACRO_value = STR(args_list(1), args_list(2))
+
+            CASE func_name EQ 'STRS'
+                MACRO_value = STRS(args_list(1), args_list(2))
+
+            CASE func_name EQ 'SUBS'
+                MACRO_value = SUBS(args_list(1), args_list(2))
 
             CASE func_name EQ 'SQUOTE'
                 MACRO_value = SQUOTE(args_list(1))
@@ -1236,11 +1321,33 @@ xecmove:
             CASE func_name EQ 'SUBSTRINGS'
                 MACRO_value = SUBSTRINGS(args_list(1), args_list(2), args_list(3))
 
+            CASE func_name EQ 'SUM'
+                MACRO_value = SUM(args_list(1))
+
             CASE func_name EQ 'TIME'
                 MACRO_value = TIME()
 
             CASE func_name EQ 'TIMEDATE'
                 MACRO_value = TIMEDATE()
+
+            CASE func_name EQ 'TIMEDIFF'
+                MACRO_value = TIMEDIFF(args_list(1), args_list(2), args_list(3))
+
+            CASE func_name EQ 'TIMESTAMP'
+                MACRO_value = TIMESTAMP()
+
+            CASE func_name EQ 'TRANS'
+                MACRO_value = TRANS(args_list(1), args_list(2), args_list(3), args_list(4))
+
+            CASE func_name EQ 'TRIM'
+                BEGIN CASE
+                CASE args_qty EQ 1
+                    MACRO_value = TRIM(args_list(1))
+                CASE args_qty EQ 2
+                    MACRO_value = TRIM(args_list(1), args_list(2))
+                CASE args_qty EQ 3
+                    MACRO_value = TRIM(args_list(1), args_list(2), args_list(3))
+                END CASE
 
             END CASE
 
@@ -1710,19 +1817,19 @@ yloadcompany:
 *----------------------------------------------------------------------------------------------------------------------------------
 yprocalertmsg:
 
-    IF TAFJ_on THEN
+*    IF TAFJ_on THEN
         CHANGE @FM TO ' (@FM) ' IN ALERT_msg
         CHANGE @VM TO ' (@VM) ' IN ALERT_msg
         CHANGE @SM TO ' (@SM) ' IN ALERT_msg
         CHANGE @TM TO ' (@TM) ' IN ALERT_msg
-    END ELSE
-
-        CHANGE @FM TO @(-175) : '@FM' : @(-128) IN ALERT_msg
-        CHANGE @VM TO @(-180) : '@VM' : @(-128) IN ALERT_msg
-        CHANGE @SM TO @(-178) : '@SM' : @(-128) IN ALERT_msg
-        CHANGE @TM TO @(-176) : '@TM' : @(-128) IN ALERT_msg
-
-    END
+*    END ELSE
+*
+*        CHANGE @FM TO @(-175) : '@FM' : @(-128) IN ALERT_msg
+*        CHANGE @VM TO @(-180) : '@VM' : @(-128) IN ALERT_msg
+*        CHANGE @SM TO @(-178) : '@SM' : @(-128) IN ALERT_msg
+*        CHANGE @TM TO @(-176) : '@TM' : @(-128) IN ALERT_msg
+*
+*    END
 
     RETURN
 
@@ -1739,7 +1846,7 @@ ysetmacro:
         MACRO_name_list<-1> = MACRO_name
     END ELSE
         IF NOT(ISDIGIT(MACRO_name)) AND UPCASE(MACRO_name) EQ MACRO_name THEN
-            ERROR_message = 'Uppercase macro ({1}) can not be reassigned'
+            ERROR_message = 'System-level macro ({1}) can not be reassigned'
             CHANGE '{1}' TO MACRO_name IN ERROR_message
             EXIT_code = 48
             GOSUB doexit
