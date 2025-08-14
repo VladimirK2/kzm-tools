@@ -116,7 +116,7 @@ initvars:
     CLOSE f_mnem_cmp
 
     MACRO_name_list = 'TODAY' :@FM: 'LCCY' :@FM: 'ID.COMPANY' :@FM: 'FM' :@FM: 'VM' :@FM: 'SM' :@FM: 'TM' :@FM: 'SPACE' :@FM: 'BLANK' :@FM: 'RECORD'
-    MACRO_name_list := @FM: 'EXECSCREEN' :@FM: 'EXECRETCODE' :@FM: 'EXECRETDATA' :@FM: 'EXECRETLIST' :@FM: 'CRLF'
+    MACRO_name_list := @FM: 'EXECSCREEN' :@FM: 'EXECRETCODE' :@FM: 'EXECRETDATA' :@FM: 'EXECRETLIST' :@FM: 'LF' :@FM: 'TAB' :@FM: 'DIR_DELIM_CH'
 
     DIM MACRO_list(DCOUNT(MACRO_name_list, @FM))     ;* will expand dynamically
     MAT MACRO_list = ''
@@ -129,6 +129,8 @@ initvars:
     MACRO_list(7) = @TM
     MACRO_list(8) = ' '
     MACRO_list(15) = CHAR(10)
+    MACRO_list(16) = CHAR(9)
+    MACRO_list(17) = DIR_DELIM_CH
 
     GOSUB yloadcompany
 
@@ -364,6 +366,7 @@ runscript:
         CASE CMD_line EQ 'precision'   ;     GOSUB xecprecision
         CASE CMD_line EQ 'read'        ;     GOSUB xecread
         CASE CMD_line EQ 'select'      ;     GOSUB xecselect
+        CASE CMD_line EQ 'sleep'       ;     GOSUB xecsleep
         CASE CMD_line EQ 'update'      ;     GOSUB xecupdate
 
         CASE 1
@@ -385,6 +388,7 @@ xecalert:
     GOSUB ycheckcmdsyntax
     ALERT_msg = SCRIPT_line
     GOSUB yprocalertmsg
+    CRT ALERT_msg
     INFO_list<-1> = '[INFO] ' : ALERT_msg
 
     LOOP
@@ -395,6 +399,7 @@ xecalert:
         END
         ALERT_msg = TRIM(SCRIPT_line, ' ', 'L')
         GOSUB yprocalertmsg
+        CRT ALERT_msg
         INFO_list<-1> = '[INFO] ' : ALERT_msg
 
     REPEAT
@@ -851,13 +856,20 @@ xecmove:
             args_raw_list = eval_cmd[parn_open + 1, (parn_close - 1 - parn_open)]
             args_qty = DCOUNT(args_raw_list, ',')
 
-            FUNC_args = '_DATE_TIME_FILEINFO_GETCWD_'              ;* functions and number of allowed args (1 = 0 args, 2 = 1 arg etc)
-            FUNC_args<2> = '_ABS_ABSS_ALPHA_BYTELEN_CHAR_CHARS_DIR_DOWNCASE_DROUND_DTX_GETENV_LEN_RND_'
-            FUNC_args<3> = '_ADDS_ANDS_CATS_COUNT_COUNTS_DCOUNT_DEL_DIV_DIVS_DROUND_EQ_EQS_EXTRACT_FADD_FDIV_FIND_FINDSTR_FMUL_FMT_FMTS_LEFT_NE_OCONV_RIGHT_'
-            FUNC_args<3> := '_FOLD_FSUB_GE_GES_'
-            FUNC_args<4> = '_CHANGE_CONVERT_DEL_EREPLACE_EXTRACT_FIELD_FIELDS_FIND_FINDSTR_'
-            FUNC_args<5> = '_DEL_EREPLACE_EXTRACT_FIELD_FIELDS_'
-            FUNC_args<6> = '_EREPLACE_'
+* no args
+            FUNC_args = '_DATE_TIME_FILEINFO_GETCWD_INPUT_TIMEDATE_'
+* 1 arg
+            FUNC_args<2> = '_ABS_ABSS_ALPHA_BYTELEN_CHAR_CHARS_DIR_DOWNCASE_DQUOTE_DROUND_DTX_GETENV_LEN_LENS_RND_INPUT_INT_ISALPHA_ISALNUM_ISCNTRL_ISDIGIT_ISLOWER_'
+            FUNC_args<2> := 'ISPRINT_ISSPACE_ISUPPER_LOWER_MAXIMUM_MINIMUM_NEG_NEGS_NOT_NOTS_RAISE_SQUOTE_'
+* 2 args
+            FUNC_args<3> = '_ADDS_ANDS_CATS_CHANGETIMESTAMP_COUNT_COUNTS_DCOUNT_DEL_DIV_DIVS_DROUND_EQ_EQS_EXTRACT_FADD_FDIV_FIND_FINDSTR_FMUL_FMT_FMTS_FOLD_FSUB_'
+            FUNC_args<3> := 'GE_GES_GT_ICONV_ICONVS_LE_LEFT_LES_LOCALDATE_LOCALTIME_MATCHES_MOD_MODS_MULS_NE_NES_OCONV_RIGHT_STR_'
+* 3 args
+            FUNC_args<4> = '_CHANGE_CONVERT_DEL_EREPLACE_EXTRACT_FIELD_FIELDS_FIND_FINDSTR_IFS_INDEX_INS_MAKETIMESTAMP_MATCHFIELD_SUBSTRINGS_'
+* 4 args
+            FUNC_args<5> = '_DEL_EREPLACE_EXTRACT_FIELD_FIELDS_INS_'
+* 5 args
+            FUNC_args<6> = '_EREPLACE_INS_'
 
             macro_qty = INMAT(MACRO_list)
             FOR i = 1 TO macro_qty
@@ -916,6 +928,9 @@ xecmove:
             CASE func_name EQ 'CHANGE'
                 MACRO_value = CHANGE(args_list(1), args_list(2), args_list(3))
 
+            CASE func_name EQ 'CHANGETIMESTAMP'
+                MACRO_value = CHANGETIMESTAMP(args_list(1), args_list(2))
+
             CASE func_name EQ 'CHAR'
                 MACRO_value = CHAR(args_list(1))
 
@@ -960,6 +975,9 @@ xecmove:
             CASE func_name EQ 'DOWNCASE'
                 MACRO_value = DOWNCASE(args_list(1))
 
+            CASE func_name EQ 'DQUOTE'
+                MACRO_value = DQUOTE(args_list(1))
+
             CASE func_name EQ 'DROUND'
                 IF args_qty EQ 2 THEN MACRO_value = DROUND(args_list(1), args_list(2))
                 ELSE MACRO_value = DROUND(args_list(1))
@@ -998,9 +1016,6 @@ xecmove:
 
             CASE func_name EQ 'FDIV'
                 MACRO_value = FDIV(args_list(1), args_list(2))
-
-            CASE func_name EQ 'FMUL'
-                MACRO_value = FMUL(args_list(1), args_list(2))
 
             CASE func_name EQ 'FIELD'
                 IF args_qty EQ 3 THEN MACRO_value = FIELD(args_list(1), args_list(2), args_list(3))
@@ -1053,6 +1068,9 @@ xecmove:
             CASE func_name EQ 'FMTS'
                 MACRO_value = FMTS(args_list(1), args_list(2))
 
+            CASE func_name EQ 'FMUL'
+                MACRO_value = FMUL(args_list(1), args_list(2))
+
             CASE func_name EQ 'FOLD'
                 MACRO_value = FOLD(args_list(1), args_list(2))
 
@@ -1071,17 +1089,137 @@ xecmove:
             CASE func_name EQ 'GETENV'
                 IF GETENV(args_list(1), MACRO_value) THEN NULL
 
+            CASE func_name EQ 'GT'
+                MACRO_value = (args_list(1) GT args_list(2))
+
+            CASE func_name EQ 'ICONV'
+                MACRO_value = ICONV(args_list(1), args_list(2))
+
+            CASE func_name EQ 'ICONVS'
+                MACRO_value = ICONVS(args_list(1), args_list(2))
+
+            CASE func_name EQ 'IFS'
+                MACRO_value = IFS(args_list(1), args_list(2), args_list(3))
+
+            CASE func_name EQ 'INDEX'
+                MACRO_value = INDEX(args_list(1), args_list(2), args_list(3))
+
+            CASE func_name EQ 'INPUT'
+                IF args_qty EQ 0 THEN
+                    INPUT MACRO_value
+                END ELSE
+                    INPUT MACRO_value FOR args_list(1) ELSE MACRO_value = ''
+                END
+
+            CASE func_name EQ 'INS'
+                BEGIN CASE
+                CASE args_qty EQ 3
+                    INS args_list(1) BEFORE args_list(2)<args_list(3)>
+                CASE args_qty EQ 4
+                    INS args_list(1) BEFORE args_list(2)<args_list(3), args_list(4)>
+                CASE args_qty EQ 5
+                    INS args_list(1) BEFORE args_list(2)<args_list(3), args_list(4), args_list(5)>
+                END CASE
+                MACRO_value = args_list(2)
+
+            CASE func_name EQ 'INT'
+                MACRO_value = INT(args_list(1))
+
+            CASE func_name EQ 'ISALPHA'
+                MACRO_value = ISALPHA(args_list(1))
+
+            CASE func_name EQ 'ISALNUM'
+                MACRO_value = ISALNUM(args_list(1))
+
+            CASE func_name EQ 'ISCNTRL'
+                MACRO_value = ISCNTRL(args_list(1))
+
+            CASE func_name EQ 'ISDIGIT'
+                MACRO_value = ISDIGIT(args_list(1))
+
+            CASE func_name EQ 'ISLOWER'
+                MACRO_value = ISLOWER(args_list(1))
+
+            CASE func_name EQ 'ISPRINT'
+                MACRO_value = ISPRINT(args_list(1))
+
+            CASE func_name EQ 'ISSPACE'
+                MACRO_value = ISSPACE(args_list(1))
+
+            CASE func_name EQ 'ISUPPER'
+                MACRO_value = ISUPPER(args_list(1))
+
             CASE func_name EQ 'LEFT'
                 MACRO_value = LEFT(args_list(1), args_list(2))
 
             CASE func_name EQ 'LEN'
                 MACRO_value = LEN(args_list(1))
 
+            CASE func_name EQ 'LE'
+                MACRO_value = (args_list(1) LE args_list(2))
+
+            CASE func_name EQ 'LENS'
+                MACRO_value = LENS(args_list(1))
+
+            CASE func_name EQ 'LES'
+                MACRO_value = LES(args_list(1), args_list(2))
+
+            CASE func_name EQ 'LOCALDATE'
+                MACRO_value = LOCALDATE(args_list(1), args_list(2))
+
+            CASE func_name EQ 'LOCALTIME'
+                MACRO_value = LOCALTIME(args_list(1), args_list(2))
+
+            CASE func_name EQ 'LOWER'
+                MACRO_value = LOWER(args_list(1))
+
+            CASE func_name EQ 'MAKETIMESTAMP'
+                MACRO_value = MAKETIMESTAMP(args_list(1), args_list(2), args_list(3))
+
+            CASE func_name EQ 'MATCHES'
+                MACRO_value = (args_list(1) MATCHES args_list(2))
+
+            CASE func_name EQ 'MATCHFIELD'
+                MACRO_value = MATCHFIELD(args_list(1), args_list(2), args_list(3))
+
+            CASE func_name EQ 'MAXIMUM'
+                MACRO_value = MAXIMUM(args_list(1))
+
+            CASE func_name EQ 'MINIMUM'
+                MACRO_value = MINIMUM(args_list(1))
+
+            CASE func_name EQ 'MOD'
+                MACRO_value = MOD(args_list(1), args_list(2))
+
+            CASE func_name EQ 'MODS'
+                MACRO_value = MODS(args_list(1), args_list(2))
+
+            CASE func_name EQ 'MULS'
+                MACRO_value = MULS(args_list(1), args_list(2))
+
             CASE func_name EQ 'NE'
                 MACRO_value = (args_list(1) NE args_list(2))
 
+            CASE func_name EQ 'NEG'
+                MACRO_value = NEG(args_list(1))
+
+            CASE func_name EQ 'NEGS'
+                MACRO_value = NEGS(args_list(1))
+
+            CASE func_name EQ 'NES'
+                MACRO_value = NES(args_list(1), args_list(2))
+
+            CASE func_name EQ 'NOT'
+                MACRO_value = NOT(args_list(1))
+
+            CASE func_name EQ 'NOTS'
+                MACRO_value = NOTS(args_list(1))
+
             CASE func_name EQ 'OCONV'
                 MACRO_value = OCONV(args_list(1), args_list(2))
+
+            CASE func_name EQ 'RAISE'
+                MACRO_value = RAISE(args_list(1))
 
             CASE func_name EQ 'RIGHT'
                 MACRO_value = RIGHT(args_list(1), args_list(2))
@@ -1089,8 +1227,20 @@ xecmove:
             CASE func_name EQ 'RND'
                 MACRO_value = RND(args_list(1))
 
+            CASE func_name EQ 'STR'
+                MACRO_value = STR(args_list(1), args_list(2))
+
+            CASE func_name EQ 'SQUOTE'
+                MACRO_value = SQUOTE(args_list(1))
+
+            CASE func_name EQ 'SUBSTRINGS'
+                MACRO_value = SUBSTRINGS(args_list(1), args_list(2), args_list(3))
+
             CASE func_name EQ 'TIME'
                 MACRO_value = TIME()
+
+            CASE func_name EQ 'TIMEDATE'
+                MACRO_value = TIMEDATE()
 
             END CASE
 
@@ -1228,6 +1378,16 @@ xecselect:
         EXIT_code = 41
         GOSUB doexit
     END
+
+    RETURN
+
+*----------------------------------------------------------------------------------------------------------------------------------
+xecsleep:
+
+    GOSUB ygetnextline
+    GOSUB ycheckcmdsyntax
+
+    SLEEP SCRIPT_line
 
     RETURN
 
