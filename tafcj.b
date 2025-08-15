@@ -28,6 +28,18 @@ doexit:
         CRT WARN_list
     END
 
+    IF OUT_file_names NE '' THEN
+        out_qty = INMAT(OUT_file_handles)
+        FOR i = 1 TO out_qty
+            IF ASSIGNED(OUT_file_handles(i)) AND OUT_file_handles(i) NE '' THEN
+                info_msg = '[INFO] Closing {}...'
+                CHANGE '{}' TO OUT_file_names<i> IN info_msg
+                CRT info_msg
+                CLOSESEQ OUT_file_handles(i)
+            END
+        NEXT i
+    END
+
     IF EXIT_code NE 0 THEN
         CRT '[ERROR] ' : ERROR_message
         CRT 'Exit code: ' : EXIT_code
@@ -80,6 +92,13 @@ initvars:
 
     LBL_list = ''  ;  LBL_posn_list = ''  ;  LBL_togo = ''
 
+    OFS_msg = ''  ;  FAIL_on_err = @FALSE  ;  DEL_on_err = @FALSE
+    OFS_commit_ok = @FALSE  ;  OFS_output = ''
+
+    OUT_file_names = ''
+    DIM OUT_file_handles(1)
+    MAT OUT_file_handles = ''
+
     RECORD_curr = ''
     RECORD_curr_init = ''
     RECORD_id_curr = ''
@@ -117,7 +136,9 @@ initvars:
 
     MACRO_name_list = 'TODAY' :@FM: 'LCCY' :@FM: 'ID.COMPANY' :@FM: 'FM' :@FM: 'VM' :@FM: 'SM' :@FM: 'TM' :@FM: 'SPACE' :@FM: 'BLANK' :@FM: 'RECORD'
     MACRO_name_list := @FM: 'EXECSCREEN' :@FM: 'EXECRETCODE' :@FM: 'EXECRETDATA' :@FM: 'EXECRETLIST' :@FM: 'LF' :@FM: 'TAB' :@FM: 'DIR_DELIM_CH'
-    MACRO_name_list := @FM: 'COMMA' :@FM: 'LPARENTH' :@FM: 'RPARENTH'
+    MACRO_name_list := @FM: 'COMMA' :@FM: 'LPARENTH' :@FM: 'RPARENTH' :@FM: 'USERNAME' :@FM: 'PASSWORD' :@FM: 'OFSCOMMIT' :@FM: 'OFSOUTPUT'
+* 25th - ...
+    MACRO_name_list := @FM: 'DICT' :@FM: 'LREF'
 
     DIM MACRO_list(DCOUNT(MACRO_name_list, @FM))     ;* will expand dynamically
     MAT MACRO_list = ''
@@ -259,6 +280,9 @@ parseparams:
         END
     END
 
+    MACRO_list(21) = T24_login
+    MACRO_list(22) = T24_passwd
+
     RETURN
 
 *----------------------------------------------------------------------------------------------------------------------------------
@@ -367,8 +391,11 @@ runscript:
         CASE CMD_line EQ 'getnext'     ;     GOSUB xecgetnext
         CASE CMD_line EQ 'jump'        ;     GOSUB xecjump
         CASE CMD_line EQ 'move'        ;     GOSUB xecmove
+        CASE CMD_line EQ 'out'         ;     GOSUB xecout
+        CASE CMD_line EQ 'outfile'     ;     GOSUB xecoutfile
         CASE CMD_line EQ 'precision'   ;     GOSUB xecprecision
         CASE CMD_line EQ 'read'        ;     GOSUB xecread
+        CASE CMD_line EQ 'runofs'      ;     GOSUB xecrunofs
         CASE CMD_line EQ 'select'      ;     GOSUB xecselect
         CASE CMD_line EQ 'sleep'       ;     GOSUB xecsleep
         CASE CMD_line EQ 'update'      ;     GOSUB xecupdate
@@ -546,12 +573,6 @@ xeccommit:
 
     CASE commit_mode EQ 'LIVE' OR commit_mode EQ 'INAU'
 
-        IF OFS_source_id EQ '-' THEN
-            ERROR_message = 'OFS.SOURCE is mandatory for this operation'
-            EXIT_code = 40
-            GOSUB doexit
-        END
-
 *'SPF,/S/PROCESS//0,' : T24$LOGIN : '/' : T24$PASSWD : ',SYSTEM'
 
         RECORD_curr<REC_STAT_posn> = 'IHLD'
@@ -576,15 +597,17 @@ xeccommit:
 
         app_name = FIELD(FILE_fname_list<FILE_no_curr>, '.', 2, 999)
 
-        ofs_msg = '{1}{2}/I/PROCESS//{3},{4}/{5},{6}'
-        CHANGE '{1}' TO app_name IN ofs_msg
-        CHANGE '{2}' TO commit_version IN ofs_msg
-        CHANGE '{3}' TO no_of_auth IN ofs_msg
-        CHANGE '{4}' TO T24_login IN ofs_msg
-        CHANGE '{5}' TO T24_passwd IN ofs_msg
-        CHANGE '{6}' TO RECORD_id_curr IN ofs_msg
+        OFS_msg = '{1}{2}/I/PROCESS//{3},{4}/{5},{6}'
+        CHANGE '{1}' TO app_name IN OFS_msg
+        CHANGE '{2}' TO commit_version IN OFS_msg
+        CHANGE '{3}' TO no_of_auth IN OFS_msg
+        CHANGE '{4}' TO T24_login IN OFS_msg
+        CHANGE '{5}' TO T24_passwd IN OFS_msg
+        CHANGE '{6}' TO RECORD_id_curr IN OFS_msg
 
         DEL_on_err = @TRUE
+        FAIL_on_err = @TRUE
+
         GOSUB ylaunchofs
 
         info_msg =  FILE_fname_list<FILE_no_curr> : '>' : RECORD_id_curr : ' committed'
@@ -642,6 +665,7 @@ xecexec:
     GOSUB ygetnextline
     GOSUB ycheckcmdsyntax
     exec_cmd = SCRIPT_line
+    cmd_line_no = SCRIPT_line_no
 
 * optional expected return code
 
@@ -662,7 +686,7 @@ xecexec:
 
     IF check_ret_code AND exec_ret_code NE exp_ret_code THEN
         ERROR_message = 'Command at the line {1}: return code "{2}", expected : "{3}"'
-        CHANGE '{1}' TO SCRIPT_line_no IN ERROR_message
+        CHANGE '{1}' TO cmd_line_no IN ERROR_message
         CHANGE '{2}' TO CONVERT(@FM:@VM:@SM, '^]\', exec_ret_code) IN ERROR_message
         CHANGE '{3}' TO CONVERT(@FM:@VM:@SM, '^]\', exp_ret_code) IN ERROR_message
         EXIT_code = 56
@@ -670,7 +694,7 @@ xecexec:
     END
 
     info_msg = '[INFO] Command at the line {1}: return code "{2}"'
-    CHANGE '{1}' TO SCRIPT_line_no IN info_msg
+    CHANGE '{1}' TO cmd_line_no IN info_msg
     CHANGE '{2}' TO CONVERT(@FM:@VM:@SM, '^]\', exec_ret_code) IN info_msg
     INFO_list<-1> = info_msg
 
@@ -861,11 +885,11 @@ xecmove:
             args_qty = DCOUNT(args_raw_list, ',')
 
 * no args
-            FUNC_args = '_DATE_TIME_FILEINFO_GETCWD_INPUT_TIMEDATE_TIMESTAMP_'
+            FUNC_args = '_DATE_TIME_FILEINFO_GETCWD_INPUT_TIMEDATE_TIMESTAMP_UNIQUEKEY_'
 * 1 arg
             FUNC_args<2> = '_ABS_ABSS_ALPHA_BYTELEN_CHAR_CHARS_DIR_DOWNCASE_DQUOTE_DROUND_DTX_GETENV_LEN_LENS_RND_INPUT_INT_ISALPHA_ISALNUM_ISCNTRL_ISDIGIT_ISLOWER_'
             FUNC_args<2> := 'ISPRINT_ISSPACE_ISUPPER_LOWER_MAXIMUM_MINIMUM_NEG_NEGS_NOT_NOTS_NUM_NUMS_PUTENV_RAISE_SENTENCE_SEQ_SEQS_SORT_SPACE_SPACES_SQRT_SQUOTE_'
-            FUNC_args<2> := 'SUM_TRIM_'
+            FUNC_args<2> := 'SUM_TRIM_UPCASE_XTD_'
 * 2 args
             FUNC_args<3> = '_ADDS_ANDS_CATS_CHANGETIMESTAMP_COUNT_COUNTS_DCOUNT_DEL_DIV_DIVS_DROUND_EQ_EQS_EXTRACT_FADD_FDIV_FIND_FINDSTR_FMUL_FMT_FMTS_FOLD_FSUB_'
             FUNC_args<3> := 'GE_GES_GT_ICONV_ICONVS_LE_LEFT_LES_LOCALDATE_LOCALTIME_MATCHES_MOD_MODS_MULS_NE_NES_OCONV_OCONVS_ORS_PWR_REGEXP_RIGHT_SADD_SDIV_SMUL_'
@@ -1349,11 +1373,117 @@ xecmove:
                     MACRO_value = TRIM(args_list(1), args_list(2), args_list(3))
                 END CASE
 
+            CASE func_name EQ 'UNIQUEKEY'
+                MACRO_value = UNIQUEKEY()
+
+            CASE func_name EQ 'UPCASE'
+                MACRO_value = UPCASE(args_list(1))
+
+            CASE func_name EQ 'XTD'
+                MACRO_value = XTD(args_list(1))
+
             END CASE
 
             GOSUB ysetmacro
 
         END CASE
+    REPEAT
+
+    RETURN
+
+*----------------------------------------------------------------------------------------------------------------------------------
+xecout:
+* this command should be repeated when file number changes
+
+    GOSUB ygetnextline
+    GOSUB ycheckcmdsyntax
+    out_file_no = SCRIPT_line
+    IF OUT_file_names<out_file_no> EQ '' THEN
+        ERROR_message = 'No file for area number {} opened for output'
+        CHANGE '{}' TO out_file_no IN ERROR_message
+        EXIT_code = 60
+        GOSUB doexit
+    END
+
+    iter_no = 0
+    LOOP
+        iter_no +=1
+
+        GOSUB ygetnextline
+        IF iter_no EQ 1 THEN
+            GOSUB ycheckcmdsyntax
+        END ELSE
+            IF is_EOF OR SCRIPT_line[1, 1] NE ' ' THEN
+                GOSUB yrewind
+                BREAK
+            END
+        END
+        output = TRIM(SCRIPT_line, ' ' , 'L')
+        WRITESEQ output TO OUT_file_handles(out_file_no) ELSE
+            ERROR_message = 'Error writing to output file for area number {}'
+            CHANGE '{}' TO out_file_no IN ERROR_message
+            EXIT_code = 61
+            GOSUB doexit
+        END
+    REPEAT
+
+    RETURN
+
+*----------------------------------------------------------------------------------------------------------------------------------
+xecoutfile:
+
+    iter_no = 0
+    LOOP
+        iter_no +=1
+
+        GOSUB ygetnextline
+        IF iter_no EQ 1 THEN
+            GOSUB ycheckcmdsyntax
+        END ELSE
+            IF is_EOF OR SCRIPT_line[1, 1] NE ' ' THEN
+                GOSUB yrewind
+                BREAK
+            END
+        END
+        out_file_no = TRIM(SCRIPT_line, ' ' , 'L')
+
+        IF OUT_file_names<out_file_no> NE '' THEN
+            ERROR_message = 'Area number {} already used for output'
+            CHANGE '{}' TO out_file_no IN ERROR_message
+            EXIT_code = 59
+            GOSUB doexit
+        END
+
+        GOSUB ygetnextline
+        GOSUB ycheckcmdsyntax
+        out_file_fldr = SCRIPT_line
+
+        GOSUB ygetnextline
+        GOSUB ycheckcmdsyntax
+        out_file_name = SCRIPT_line
+
+        out_file_spec = out_file_fldr : DIR_DELIM_CH : out_file_name
+        CHANGE '/' TO DIR_DELIM_CH IN out_file_spec
+        FIND out_file_spec IN OUT_file_names SETTING posn ELSE posn = 0
+        IF posn GT 0 THEN
+            ERROR_message = 'File {} already used for output'
+            CHANGE '{}' TO out_file_spec IN ERROR_message
+            EXIT_code = 57
+            GOSUB doexit
+        END
+        OUT_file_names<out_file_no> = out_file_spec
+        IF INMAT(OUT_file_handles) LT out_file_no THEN
+            DIM OUT_file_handles(out_file_no)
+        END
+
+        OPENSEQ out_file_fldr, out_file_name TO OUT_file_handles(out_file_no) ELSE CREATE OUT_file_handles(out_file_no) ELSE
+            ERROR_message = 'Unable to create file {} for output'
+            CHANGE '{}' TO out_file_spec IN ERROR_message
+            EXIT_code = 58
+            GOSUB doexit
+        END
+        WEOFSEQ OUT_file_handles(out_file_no)
+
     REPEAT
 
     RETURN
@@ -1436,6 +1566,38 @@ xecread:
     RETURN
 
 *----------------------------------------------------------------------------------------------------------------------------------
+xecrunofs:
+
+    DEL_on_err = @FALSE
+    FAIL_on_err = @FALSE
+
+    LOOP
+        cmds_qty ++
+        GOSUB ygetnextline
+
+        IF cmds_qty EQ 1 THEN GOSUB ycheckcmdsyntax
+        ELSE
+            IF is_EOF OR SCRIPT_line[1, 1] NE ' ' THEN
+                GOSUB yrewind
+                BREAK
+            END
+        END
+
+        OFS_msg =  TRIM(SCRIPT_line, ' ', 'L')
+
+        GOSUB ylaunchofs
+*        OFS_commit_ok, OFS_output:  '$OFSCOMMIT$' , '$OFSOUT$'
+
+        ofs_func = FIELD(OFS_msg, '/', 2)
+        IF INDEX('IADR', ofs_func, 1) AND NOT(OFS_commit_ok) THEN
+            WARN_list<-1> = '[WARN] OFS error: ' : OFS_output
+        END
+
+    REPEAT
+
+    RETURN
+
+*----------------------------------------------------------------------------------------------------------------------------------
 xecselect:
 
     GOSUB ygetnextline
@@ -1481,6 +1643,15 @@ xecselect:
     IF ret_code<1,1> EQ 404 OR (ret_code<1,1> EQ 401 AND ret_code<1,2> EQ 'QLNONSEL') THEN
         IF NOT(TAFJ_on) THEN WRITELIST ret_list TO sel_list
     END ELSE
+
+        LBL_togo = ':sel_error_' : sel_list
+        FIND LBL_togo IN LBL_list SETTING posn ELSE posn = 0
+        IF posn GT 0 THEN
+            WARN_list<-1> = '[WARN] SELECT error [' : sel_cmd : ']'
+            GOSUB yjump
+            RETURN
+        END
+
         ERROR_message = 'SELECT error [' : sel_cmd : ']'
         EXIT_code = 41
         GOSUB doexit
@@ -1646,6 +1817,9 @@ ygetdict:
     DICT_list(FILE_no_curr) = dict_sel_list
     DICT_list_lref(FILE_no_curr) = dict_sel_list_lref
 
+    MACRO_list(25) = dict_sel_list   ;* can be addressed as $DICT$
+    MACRO_list(26) = dict_sel_list_lref   ;* can be addressed as $LREF$
+
     FIND 'LOCAL.REF' IN DICT_list(FILE_no_curr) SETTING LOCREF_posn ELSE LOCREF_posn = 0
 
     RETURN
@@ -1700,6 +1874,18 @@ yfindfield:
         END
     END
 
+
+    RETURN
+
+*----------------------------------------------------------------------------------------------------------------------------------
+yfostokdel:
+
+    IF T24_userid NE '' THEN
+        EXECUTE 'SELECT F.OS.TOKEN WITH USER.ID EQ ' : T24_userid CAPTURING dummy RTNLIST T24_user_tok
+        IF T24_user_tok NE '' THEN
+            EXECUTE 'DELETE F.OS.TOKEN ' : T24_user_tok CAPTURING dummy
+        END
+    END
 
     RETURN
 
@@ -1774,31 +1960,43 @@ yjump:
 
 *-------------------------------------------------------------------------------------
 ylaunchofs:
-* in: ofs_msg, DEL_on_err
+* in: OFS_msg, FAIL_on_err, DEL_on_err
+* out: OFS_commit_ok, OFS_output
 
-    commit_successful = 0
-    ofs_ok = @TRUE
-
-    HUSH ON
-    CALL OFS.BULK.MANAGER(ofs_msg, ofs_output, commit_successful)
-    HUSH OFF
-
-    ERROR_message = 'OFS error'
-
-    IF NOT(commit_successful) THEN
-        ofs_ok = @FALSE
-        ERROR_message := ': ' : ofs_output
-    END
-
-    IF ofs_ok THEN ERROR_message = ''
-    ELSE
-
+    IF OFS_source_id EQ '-' THEN
         IF DEL_on_err THEN
             DELETE f_nau, RECORD_id_curr ON ERROR NULL
         END
 
-        EXIT_code = 39
+        ERROR_message = 'OFS.SOURCE is mandatory for this operation'
+        EXIT_code = 40
         GOSUB doexit
+    END
+
+    IF TAFJ_on THEN GOSUB yfostokdel
+
+    commit_successful = 0
+
+    HUSH ON
+    CALL OFS.BULK.MANAGER(OFS_msg, OFS_output, commit_successful)
+    HUSH OFF
+
+    OFS_commit_ok = commit_successful
+    MACRO_list(23) = OFS_commit_ok
+    MACRO_list(24) = OFS_output
+
+    IF NOT(OFS_commit_ok) AND DEL_on_err THEN
+        DELETE f_nau, RECORD_id_curr ON ERROR NULL
+    END
+
+    IF FAIL_on_err THEN
+        IF NOT(OFS_commit_ok) THEN
+            ERROR_message = 'OFS error'
+            ERROR_message := ': ' : OFS_output
+
+            EXIT_code = 39
+            GOSUB doexit
+        END
     END
 
     RETURN
