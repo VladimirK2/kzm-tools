@@ -138,7 +138,7 @@ initvars:
     MACRO_name_list := @FM: 'EXECSCREEN' :@FM: 'EXECRETCODE' :@FM: 'EXECRETDATA' :@FM: 'EXECRETLIST' :@FM: 'LF' :@FM: 'TAB' :@FM: 'DIR_DELIM_CH'
     MACRO_name_list := @FM: 'COMMA' :@FM: 'LPARENTH' :@FM: 'RPARENTH' :@FM: 'USERNAME' :@FM: 'PASSWORD' :@FM: 'OFSCOMMIT' :@FM: 'OFSOUTPUT'
 * 25th - ...
-    MACRO_name_list := @FM: 'DICT' :@FM: 'LREF'
+    MACRO_name_list := @FM: 'DICT' :@FM: 'LREF' :@FM: 'NEWRECORD'
 
     DIM MACRO_list(DCOUNT(MACRO_name_list, @FM))     ;* will expand dynamically
     MAT MACRO_list = ''
@@ -156,6 +156,7 @@ initvars:
     MACRO_list(18) = ','
     MACRO_list(19) = '('
     MACRO_list(20) = ')'
+    MACRO_list(27) = -1    ;*  avoid accidental usage before read command
 
     GOSUB yloadcompany
 
@@ -419,7 +420,12 @@ xecalert:
     GOSUB ycheckcmdsyntax
     ALERT_msg = SCRIPT_line
     GOSUB yprocalertmsg
-    CRT ALERT_msg
+
+    IF RIGHT(ALERT_msg, 1) EQ ':' THEN
+        ALERT_msg = ALERT_msg[1, LEN(ALERT_msg) - 1]
+        CRT ALERT_msg :
+    END ELSE CRT ALERT_msg
+
     INFO_list<-1> = '[INFO] ' : ALERT_msg
 
     LOOP
@@ -694,6 +700,7 @@ xecexec:
     END
 
     info_msg = '[INFO] Command at the line {1}: return code "{2}"'
+    IF check_ret_code THEN info_msg := ' (as expected)'
     CHANGE '{1}' TO cmd_line_no IN info_msg
     CHANGE '{2}' TO CONVERT(@FM:@VM:@SM, '^]\', exec_ret_code) IN info_msg
     INFO_list<-1> = info_msg
@@ -815,9 +822,10 @@ xecmove:
         GOSUB ycheckcmdsyntax
         eval_keyword = SCRIPT_line
 
-*        FIND eval_keyword IN 'const' :@FM: 'field' :@FM: 'func' :@FM: 'globalvar' :@FM: 'subr' SETTING a_dummy ELSE
         FIND eval_keyword IN 'const' :@FM: 'field' :@FM: 'func' :@FM: 'subr' SETTING a_dummy ELSE
-            ERROR_message = 'Command "move": keyword ' : DQUOTE(eval_keyword) : ' is not supported'
+            ERROR_message = 'Command "{1}": keyword "{2}" is not supported'
+            CHANGE '{1}' TO CMD_line IN ERROR_message
+            CHANGE '{2}' TO eval_keyword IN ERROR_message
             EXIT_code = 43
             GOSUB doexit
         END
@@ -837,7 +845,7 @@ xecmove:
 
         IF CMD_line EQ 'default' THEN   ;* don't do it if it's already assigned
             FIND MACRO_name IN MACRO_name_list SETTING posn ELSE posn = 0
-            IF posn GT 0 THEN RETURN
+            IF posn GT 0 THEN CONTINUE
         END
 
         BEGIN CASE
@@ -1562,6 +1570,9 @@ xecread:
 
     RECORD_curr_init = RECORD_curr   ;* for comparison before commit
     MACRO_list(10) = RECORD_curr   ;* can be addressed as $RECORD$
+
+    IF RECORD_is_new THEN MACRO_list(27) = 1
+    ELSE MACRO_list(27) = 0
 
     RETURN
 
