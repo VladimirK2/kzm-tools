@@ -47,6 +47,7 @@ doexit:
     END ELSE CRT '[INFO] Finished successfully'
 
     CRT 'Elapsed time: ' : FMT(TIMESTAMP() - START_time, 'R2') : ' s.'
+
     EXIT(EXIT_code)
 
 *----------------------------------------------------------------------------------------------------------------------------------
@@ -68,6 +69,8 @@ initvars:
 
     IF GETENV('TAFJ_HOME', tafj_home) THEN TAFJ_on = @TRUE    ;* RUNNING.IN.TAFJ might be not yet set
     ELSE TAFJ_on = @FALSE
+
+    AUDT_trail = ''
 
     CMD_line = ''
     CMD_line_no = 0
@@ -328,6 +331,7 @@ readscript:
         GOSUB doexit
     END
 
+    CHANGE CHAR(9) TO '    ' IN SCRIPT_data
     CHANGE CHAR(13) TO '' IN SCRIPT_data
     CHANGE CHAR(10) TO @FM IN SCRIPT_data
     SCRIPT_size = DCOUNT(SCRIPT_data, @FM)
@@ -382,7 +386,10 @@ runscript:
         BEGIN CASE
 
         CASE CMD_line EQ 'alert'       ;     GOSUB xecalert
+        CASE CMD_line EQ 'clear'       ;     GOSUB xecclear
+        CASE CMD_line EQ 'clone'       ;     GOSUB xecclone
         CASE CMD_line EQ 'commit'      ;     GOSUB xeccommit
+        CASE CMD_line EQ 'company'     ;     GOSUB xeccompany
         CASE CMD_line EQ 'debug'       ;     DEBUG
         CASE CMD_line EQ 'default'     ;     GOSUB xecmove    ;* 1 section, 2 commands
         CASE CMD_line EQ 'delete'      ;     GOSUB xecdelete
@@ -440,6 +447,66 @@ xecalert:
         INFO_list<-1> = '[INFO] ' : ALERT_msg
 
     REPEAT
+
+    RETURN
+
+*----------------------------------------------------------------------------------------------------------------------------------
+xecclear:
+
+    IF RECORD_curr EQ '' THEN
+        ERROR_message = 'No "read" command was executed yet'
+        EXIT_code = 44
+        GOSUB doexit
+    END
+
+    GOSUB yaudtsave
+    RECORD_curr = ''
+    GOSUB yaudtload
+
+    RETURN
+
+*----------------------------------------------------------------------------------------------------------------------------------
+xecclone:
+
+    IF RECORD_curr EQ '' THEN
+        ERROR_message = 'No "read" command was executed yet'
+        EXIT_code = 44
+        GOSUB doexit
+    END
+
+    GOSUB ygetnextline
+    GOSUB ycheckcmdsyntax
+    table_name = SCRIPT_line
+
+    GOSUB ygetnextline
+    GOSUB ycheckcmdsyntax
+    rec_id_cloned = TRIM(SCRIPT_line, ' ', 'L')
+
+* this might be non-current table, like clone from $HIS to LIVE
+    FIND table_name IN FILE_fname_list SETTING posn ELSE posn = 0
+
+    read_ok = @TRUE
+
+    IF posn = 0 THEN
+        OPEN table_name TO f_cloned ELSE
+            ERROR_message = 'Error opening ' : table_name
+            EXIT_code = 13
+            GOSUB doexit
+        END
+        READ RECORD_curr FROM f_cloned, rec_id_cloned ELSE read_ok = @FALSE
+        CLOSE f_cloned
+
+    END ELSE
+        READ RECORD_curr FROM FILE_handle_list(posn), rec_id_cloned ELSE read_ok = @FALSE
+    END
+
+    IF NOT(read_ok) THEN
+        ERROR_message = 'Unable to clone from non-existing record'
+        EXIT_code = 62
+        GOSUB doexit
+    END
+
+    GOSUB yaudtload
 
     RETURN
 
@@ -603,13 +670,14 @@ xeccommit:
 
         app_name = FIELD(FILE_fname_list<FILE_no_curr>, '.', 2, 999)
 
-        OFS_msg = '{1}{2}/I/PROCESS//{3},{4}/{5},{6}'
+        OFS_msg = '{1}{2}/I/PROCESS//{3},{4}/{5}/{6},{7}'
         CHANGE '{1}' TO app_name IN OFS_msg
         CHANGE '{2}' TO commit_version IN OFS_msg
         CHANGE '{3}' TO no_of_auth IN OFS_msg
         CHANGE '{4}' TO T24_login IN OFS_msg
         CHANGE '{5}' TO T24_passwd IN OFS_msg
-        CHANGE '{6}' TO RECORD_id_curr IN OFS_msg
+        CHANGE '{6}' TO COMPANY_curr IN OFS_msg
+        CHANGE '{7}' TO RECORD_id_curr IN OFS_msg
 
         DEL_on_err = @TRUE
         FAIL_on_err = @TRUE
@@ -623,6 +691,16 @@ xeccommit:
     END CASE
 
     RECORD_curr_init = RECORD_curr    ;* at the end - otherwise next read or exit will fail
+
+    RETURN
+
+*----------------------------------------------------------------------------------------------------------------------------------
+xeccompany:
+
+    GOSUB ygetnextline
+    GOSUB ycheckcmdsyntax
+    COMPANY_curr = SCRIPT_line
+    GOSUB yloadcompany
 
     RETURN
 
@@ -1776,6 +1854,30 @@ xecupdate:
 
     REPEAT
 
+    RETURN
+
+*----------------------------------------------------------------------------------------------------------------------------------
+*----------------------------------------------------------------------------------------------------------------------------------
+*----------------------------------------------------------------------------------------------------------------------------------
+yaudtload:
+
+    IF REC_STAT_posn THEN
+        RECORD_curr<REC_STAT_posn> = AUDT_trail<1>
+        RECORD_curr<REC_STAT_posn + 1> = AUDT_trail<2>
+        RECORD_curr<REC_STAT_posn + 2> = AUDT_trail<3>
+        RECORD_curr<REC_STAT_posn + 3> = AUDT_trail<4>
+        RECORD_curr<REC_STAT_posn + 4> = AUDT_trail<5>
+        RECORD_curr<REC_STAT_posn + 5> = AUDT_trail<6>
+        RECORD_curr<REC_STAT_posn + 6> = AUDT_trail<7>
+    END
+
+    RETURN
+
+*----------------------------------------------------------------------------------------------------------------------------------
+yaudtsave:
+
+    IF REC_STAT_posn THEN AUDT_trail = FIELD(RECORD_curr, @FM, REC_STAT_posn, 7)
+    ELSE AUDT_trail = ''
 
     RETURN
 
@@ -2026,19 +2128,10 @@ yloadcompany:
 *----------------------------------------------------------------------------------------------------------------------------------
 yprocalertmsg:
 
-*    IF TAFJ_on THEN
-        CHANGE @FM TO ' (@FM) ' IN ALERT_msg
-        CHANGE @VM TO ' (@VM) ' IN ALERT_msg
-        CHANGE @SM TO ' (@SM) ' IN ALERT_msg
-        CHANGE @TM TO ' (@TM) ' IN ALERT_msg
-*    END ELSE
-*
-*        CHANGE @FM TO @(-175) : '@FM' : @(-128) IN ALERT_msg
-*        CHANGE @VM TO @(-180) : '@VM' : @(-128) IN ALERT_msg
-*        CHANGE @SM TO @(-178) : '@SM' : @(-128) IN ALERT_msg
-*        CHANGE @TM TO @(-176) : '@TM' : @(-128) IN ALERT_msg
-*
-*    END
+    CHANGE @FM TO ' (@FM) ' IN ALERT_msg
+    CHANGE @VM TO ' (@VM) ' IN ALERT_msg
+    CHANGE @SM TO ' (@SM) ' IN ALERT_msg
+    CHANGE @TM TO ' (@TM) ' IN ALERT_msg
 
     RETURN
 
