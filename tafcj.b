@@ -18,14 +18,16 @@ PROGRAM tafcj
 *----------------------------------------------------------------------------------------------------------------------------------
 doexit:
 
-    IF INFO_list THEN
-        CHANGE @FM TO CHAR(10) IN INFO_list
-        CRT INFO_list
-    END
+    IF EXIT_code NE 1000 THEN
+        IF INFO_list THEN
+            CHANGE @FM TO CHAR(10) IN INFO_list
+            CRT INFO_list
+        END
 
-    IF WARN_list THEN
-        CHANGE @FM TO CHAR(10) IN WARN_list
-        CRT WARN_list
+        IF WARN_list THEN
+            CHANGE @FM TO CHAR(10) IN WARN_list
+            CRT WARN_list
+        END
     END
 
     IF OUT_file_names NE '' THEN
@@ -34,19 +36,23 @@ doexit:
             IF ASSIGNED(OUT_file_handles(i)) AND OUT_file_handles(i) NE '' THEN
                 info_msg = '[INFO] Closing {}...'
                 CHANGE '{}' TO OUT_file_names<i> IN info_msg
-                CRT info_msg
+                IF EXIT_code NE 1000 THEN CRT info_msg
                 CLOSESEQ OUT_file_handles(i)
             END
         NEXT i
     END
 
-    IF EXIT_code NE 0 THEN
-        CRT '[ERROR] ' : ERROR_message
-        CRT 'Exit code: ' : EXIT_code
-        IF SCRIPT_line_no GT 0 THEN CRT 'Script line: ' : SCRIPT_line_no
-    END ELSE CRT '[INFO] Finished successfully'
+    IF EXIT_code EQ 0 THEN CRT '[INFO] Finished successfully'
+    ELSE
+        IF EXIT_code NE 1000 THEN
+            CRT '[ERROR] ' : ERROR_message
+            CRT 'Exit code: ' : EXIT_code
+            IF SCRIPT_line_no GT 0 THEN CRT 'Script line: ' : SCRIPT_line_no
+        END
+    END
 
-    CRT 'Elapsed time: ' : FMT(TIMESTAMP() - START_time, 'R2') : ' s.'
+    IF EXIT_code EQ 1000 THEN EXIT_code = 0
+    ELSE CRT 'Elapsed time: ' : FMT(TIMESTAMP() - START_time, 'R2') : ' s.'
 
     EXIT(EXIT_code)
 
@@ -808,7 +814,7 @@ xecexit:
     END
 
     IF EXIT_code GT 0 AND EXIT_code LT 1000 THEN
-        ERROR_message = 'Non-zero exit codes less than 1000 are reserved for script interpreter'
+        ERROR_message = 'Exit codes 1 - 999 are reserved for script interpreter'
         EXIT_code = 22
         GOSUB doexit
     END
@@ -995,7 +1001,7 @@ xecmove:
                 IF INDEX(func_name, macro_spec, 1) THEN CHANGE macro_spec TO macro_val IN func_name
             NEXT i
 
-            IF NOT(INDEX(FUNC_args<args_qty+1>, func_name, 1)) THEN
+            IF NOT(INDEX(FUNC_args<args_qty+1>, '_' : func_name : '_', 1)) THEN
                 ERROR_message = 'Function "{1}" not found in the list of functions with {2} parameter(s)'
                 CHANGE '{1}' TO func_name IN ERROR_message
                 CHANGE '{2}' TO args_qty IN ERROR_message
@@ -1388,12 +1394,17 @@ xecmove:
                 MACRO_value = SEQ(args_list(1))
 
             CASE func_name EQ 'SEQS'
+
+                seqs_in = args_list(1)
+                GOSUB yseqsemu
+                MACRO_value = seqs_out
+
 *                MACRO_value = SEQS(args_list(1))          ;* uncomment under TAFC - doesn't compile under tAFJ
-                IF TAFJ_on THEN
-                    ERROR_message = 'Function SEQS is not supported'
-                    EXIT_code = 999
-                    GOSUB doexit
-                END
+*                IF TAFJ_on THEN
+*                    ERROR_message = 'Function SEQS is not supported'
+*                    EXIT_code = 999
+*                    GOSUB doexit
+*                END
 
             CASE func_name EQ 'SMUL'
                 MACRO_value = SMUL(args_list(1), args_list(2))
@@ -2165,6 +2176,25 @@ yrewind:
 * one line only; we don't need to skip empty lines/comments/labels that might have been skipped on the way forward - not to parse them again
 
     SCRIPT_line_no --
+
+    RETURN
+
+*----------------------------------------------------------------------------------------------------------------------------------
+yseqsemu:
+* in: seqs_in
+* out: seqs_out
+
+    seqs_out = ''
+    seqs_repl = CHAR(255) : '|' :@FM: '|' :@VM: '|' :@SM: '|' :@TM: '|' : CHAR(250)
+
+    LOOP
+        REMOVE seqs_char FROM seqs_in SETTING stat
+        seqs_out := SEQ(seqs_char)
+
+        IF stat EQ 0 THEN BREAK
+        seqs_out := FIELD(seqs_repl, '|', stat)
+
+    REPEAT
 
     RETURN
 
