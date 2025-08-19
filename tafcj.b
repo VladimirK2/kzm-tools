@@ -65,8 +65,9 @@ dohelp:
     CRT '1st one - OFS.SOURCE @ID (or "-" if login to T24 is not necessary)'
     CRT '-s:script_file'
     CRT 'Ones below are optional'
-    CRT '-u:        T24 login'
+    CRT '-l:        T24 login'
     CRT '-p:        T24 password'
+    CRT '-var:      pass a variable, e.g. -var:dayno:T1'
 
     RETURN
 
@@ -362,29 +363,27 @@ readscript:
     RETURN
 
 *----------------------------------------------------------------------------------------------------------------------------------
+preexit:
+
+    IF RECORD_curr_init NE RECORD_curr THEN
+        ERROR_message = 'Changes not saved - {1}>{2}'
+        CHANGE '{1}' TO FILE_fname_list<FILE_no_curr> IN ERROR_message
+        CHANGE '{2}' TO RECORD_id_curr IN ERROR_message
+        EXIT_code = 16
+        GOSUB doexit
+    END
+
+    EXIT_code = 0
+    GOSUB doexit
+
+    RETURN
+
+*----------------------------------------------------------------------------------------------------------------------------------
 runscript:
 
     LOOP
         GOSUB ygetnextline
-        IF is_EOF THEN
-
-            IF RECORD_curr_init NE RECORD_curr THEN
-                ERROR_message = 'Changes not saved - {1}>{2}'
-                CHANGE '{1}' TO FILE_fname_list<FILE_no_curr> IN ERROR_message
-                CHANGE '{2}' TO RECORD_id_curr IN ERROR_message
-                EXIT_code = 16
-                GOSUB doexit
-            END
-
-            EXIT_code = 0
-            GOSUB doexit
-        END
-
-*        SCRIPT_line = SCRIPT_data<SCRIPT_line_no>
-*        IF SCRIPT_line[1,1] EQ '#' THEN CONTINUE   ;*  comment
-*        IF SCRIPT_line EQ '' THEN CONTINUE
-
-* TODO registers/@... replacement
+        IF is_EOF THEN GOSUB preexit
 
         CMD_line = SCRIPT_line         ;* for error messages, checks etc
         CMD_line_no = SCRIPT_line_no
@@ -419,8 +418,9 @@ runscript:
             EXIT_code = 17
             GOSUB doexit
 
-
         END CASE
+
+        IF is_EOF THEN GOSUB preexit
 
     REPEAT
 
@@ -443,6 +443,7 @@ xecalert:
 
     LOOP
         GOSUB ygetnextline
+        IF is_EOF THEN RETURN
         IF SCRIPT_line[1, 1] NE ' ' THEN
             GOSUB yrewind
             BREAK
@@ -530,7 +531,8 @@ xeccommit:
 
         LOOP
             GOSUB ygetnextline
-            IF is_EOF OR SCRIPT_line[1, 1] NE ' ' THEN
+            IF is_EOF THEN BREAK
+            IF SCRIPT_line[1, 1] NE ' ' THEN
                 GOSUB yrewind
                 BREAK
             END
@@ -551,19 +553,21 @@ xeccommit:
             commit_mode = COMMIT_options<posn>
 
             GOSUB ygetnextline
-            IF SCRIPT_line[1, 1] EQ ' ' THEN
-                to_check = TRIM(SCRIPT_line, ' ', 'L')
+            IF NOT(is_EOF) THEN
+                IF SCRIPT_line[1, 1] EQ ' ' THEN
+                    to_check = TRIM(SCRIPT_line, ' ', 'L')
 
-                IF to_check[1, 1] EQ ',' THEN
-                    commit_version = to_check
+                    IF to_check[1, 1] EQ ',' THEN
+                        commit_version = to_check
+                    END ELSE
+                        ERROR_message = 'VERSION expected'
+                        EXIT_code = 32
+                        GOSUB doexit
+                    END
+
                 END ELSE
-                    ERROR_message = 'VERSION expected'
-                    EXIT_code = 32
-                    GOSUB doexit
+                    GOSUB yrewind
                 END
-
-            END ELSE
-                GOSUB yrewind
             END
 
         END ELSE
@@ -571,19 +575,21 @@ xeccommit:
                 commit_version = to_check
 
                 GOSUB ygetnextline
-                IF SCRIPT_line[1, 1] EQ ' ' THEN
-                    to_check = TRIM(SCRIPT_line, ' ', 'L')
-                    FIND to_check IN COMMIT_options SETTING posn ELSE posn = 0
-                    IF posn GT 0 THEN
-                        commit_mode = COMMIT_options<posn>
-                    END ELSE
-                        ERROR_message = 'Commit mode expected'
-                        EXIT_code = 33
-                        GOSUB doexit
-                    END
+                IF NOT(is_EOF) THEN
+                    IF SCRIPT_line[1, 1] EQ ' ' THEN
+                        to_check = TRIM(SCRIPT_line, ' ', 'L')
+                        FIND to_check IN COMMIT_options SETTING posn ELSE posn = 0
+                        IF posn GT 0 THEN
+                            commit_mode = COMMIT_options<posn>
+                        END ELSE
+                            ERROR_message = 'Commit mode expected'
+                            EXIT_code = 33
+                            GOSUB doexit
+                        END
 
-                END ELSE
-                    GOSUB yrewind
+                    END ELSE
+                        GOSUB yrewind
+                    END
                 END
 
             END ELSE
@@ -683,7 +689,11 @@ xeccommit:
         CHANGE '{4}' TO T24_login IN OFS_msg
         CHANGE '{5}' TO T24_passwd IN OFS_msg
         CHANGE '{6}' TO COMPANY_curr IN OFS_msg
-        CHANGE '{7}' TO RECORD_id_curr IN OFS_msg
+
+        ofs_rec_id = RECORD_id_curr
+        special_chars = '",/' ; replace_chars = "|?^" ; CONVERT special_chars TO replace_chars IN ofs_rec_id
+
+        CHANGE '{7}' TO ofs_rec_id IN OFS_msg
 
         DEL_on_err = @TRUE
         FAIL_on_err = @TRUE
@@ -760,7 +770,7 @@ xecexec:
 * optional expected return code
 
     GOSUB ygetnextline
-    IF SCRIPT_line[1, 1] NE ' ' THEN
+    IF is_EOF OR SCRIPT_line[1, 1] NE ' ' THEN
         check_ret_code = @FALSE
         GOSUB yrewind
     END ELSE
@@ -894,7 +904,8 @@ xecmove:
 
         IF cmds_qty EQ 1 THEN GOSUB ycheckcmdsyntax
         ELSE
-            IF is_EOF OR SCRIPT_line[1, 1] NE ' ' THEN
+            IF is_EOF THEN BREAK
+            IF SCRIPT_line[1, 1] NE ' ' THEN
                 GOSUB yrewind
                 BREAK
             END
@@ -981,7 +992,7 @@ xecmove:
 * 1 arg
             FUNC_args<2> = '_ABS_ABSS_ALPHA_BYTELEN_CHAR_CHARS_DIR_DOWNCASE_DQUOTE_DROUND_DTX_GETENV_LEN_LENS_RND_INPUT_INT_ISALPHA_ISALNUM_ISCNTRL_ISDIGIT_ISLOWER_'
             FUNC_args<2> := 'ISPRINT_ISSPACE_ISUPPER_LOWER_MAXIMUM_MINIMUM_NEG_NEGS_NOT_NOTS_NUM_NUMS_PUTENV_RAISE_SENTENCE_SEQ_SEQS_SORT_SPACE_SPACES_SQRT_SQUOTE_'
-            FUNC_args<2> := 'SUM_TRIM_UPCASE_XTD_'
+            FUNC_args<2> := 'SUM_SYSTEM_TRIM_UPCASE_XTD_'
 * 2 args
             FUNC_args<3> = '_ADDS_ANDS_CATS_CHANGETIMESTAMP_COUNT_COUNTS_DCOUNT_DEL_DIV_DIVS_DROUND_EQ_EQS_EXTRACT_FADD_FDIV_FIND_FINDSTR_FMUL_FMT_FMTS_FOLD_FSUB_'
             FUNC_args<3> := 'GE_GES_GT_ICONV_ICONVS_LE_LEFT_LES_LOCALDATE_LOCALTIME_MATCHES_MOD_MODS_MULS_NE_NES_OCONV_OCONVS_ORS_PWR_REGEXP_RIGHT_SADD_SDIV_SMUL_'
@@ -1445,6 +1456,9 @@ xecmove:
             CASE func_name EQ 'SUM'
                 MACRO_value = SUM(args_list(1))
 
+            CASE func_name EQ 'SYSTEM'
+                MACRO_value = SYSTEM(args_list(1))
+
             CASE func_name EQ 'TIME'
                 MACRO_value = TIME()
 
@@ -1510,7 +1524,8 @@ xecout:
         IF iter_no EQ 1 THEN
             GOSUB ycheckcmdsyntax
         END ELSE
-            IF is_EOF OR SCRIPT_line[1, 1] NE ' ' THEN
+            IF is_EOF THEN BREAK
+            IF SCRIPT_line[1, 1] NE ' ' THEN
                 GOSUB yrewind
                 BREAK
             END
@@ -1537,7 +1552,8 @@ xecoutfile:
         IF iter_no EQ 1 THEN
             GOSUB ycheckcmdsyntax
         END ELSE
-            IF is_EOF OR SCRIPT_line[1, 1] NE ' ' THEN
+            IF is_EOF THEN BREAK
+            IF SCRIPT_line[1, 1] NE ' ' THEN
                 GOSUB yrewind
                 BREAK
             END
@@ -1677,7 +1693,8 @@ xecrunofs:
 
         IF cmds_qty EQ 1 THEN GOSUB ycheckcmdsyntax
         ELSE
-            IF is_EOF OR SCRIPT_line[1, 1] NE ' ' THEN
+            IF is_EOF THEN BREAK
+            IF SCRIPT_line[1, 1] NE ' ' THEN
                 GOSUB yrewind
                 BREAK
             END
@@ -2022,6 +2039,7 @@ ygetnextline:
         SCRIPT_line_no ++
         IF SCRIPT_line_no GT SCRIPT_size THEN
             is_EOF = @TRUE
+            SCRIPT_line = ''
             RETURN
         END
 
