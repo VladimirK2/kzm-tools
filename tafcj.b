@@ -95,6 +95,8 @@ initvars:
     FILE_fname_list = 'F.SPF'
     FILE_no_curr = 1
 
+    FIRST_space = @FALSE   ;* if we had leading space(s) in script line before trimming
+
     FLD_name = ''  ;  FLD_posn = ''  ;  IS_lref = @FALSE  ;   LREF_posn = 0  ;   LOCREF_posn = 0
 
     INFO_list = ''
@@ -444,11 +446,13 @@ xecalert:
     LOOP
         GOSUB ygetnextline
         IF is_EOF THEN RETURN
-        IF SCRIPT_line[1, 1] NE ' ' THEN
+*        IF SCRIPT_line[1, 1] NE ' ' THEN
+        IF NOT(FIRST_space) THEN
             GOSUB yrewind
             BREAK
         END
-        ALERT_msg = TRIM(SCRIPT_line, ' ', 'L')
+*        ALERT_msg = TRIM(SCRIPT_line, ' ', 'L')
+        ALERT_msg = SCRIPT_line
         GOSUB yprocalertmsg
         CRT ALERT_msg
         INFO_list<-1> = '[INFO] ' : ALERT_msg
@@ -487,7 +491,8 @@ xecclone:
 
     GOSUB ygetnextline
     GOSUB ycheckcmdsyntax
-    rec_id_cloned = TRIM(SCRIPT_line, ' ', 'L')
+*    rec_id_cloned = TRIM(SCRIPT_line, ' ', 'L')
+    rec_id_cloned = SCRIPT_line
 
 * this might be non-current table, like clone from $HIS to LIVE
     FIND table_name IN FILE_fname_list SETTING posn ELSE posn = 0
@@ -532,7 +537,8 @@ xeccommit:
         LOOP
             GOSUB ygetnextline
             IF is_EOF THEN BREAK
-            IF SCRIPT_line[1, 1] NE ' ' THEN
+*            IF SCRIPT_line[1, 1] NE ' ' THEN
+            IF NOT(FIRST_space) THEN
                 GOSUB yrewind
                 BREAK
             END
@@ -545,8 +551,10 @@ xeccommit:
     commit_version = ','   ;* default
 
     GOSUB ygetnextline
-    IF SCRIPT_line[1, 1] EQ ' ' THEN
-        to_check = TRIM(SCRIPT_line, ' ', 'L')
+*    IF SCRIPT_line[1, 1] EQ ' ' THEN
+    IF FIRST_space THEN
+*        to_check = TRIM(SCRIPT_line, ' ', 'L')
+        to_check = SCRIPT_line
 
         FIND to_check IN COMMIT_options SETTING posn ELSE posn = 0
         IF posn GT 0 THEN
@@ -554,8 +562,10 @@ xeccommit:
 
             GOSUB ygetnextline
             IF NOT(is_EOF) THEN
-                IF SCRIPT_line[1, 1] EQ ' ' THEN
-                    to_check = TRIM(SCRIPT_line, ' ', 'L')
+*                IF SCRIPT_line[1, 1] EQ ' ' THEN
+                IF FIRST_space THEN
+*                    to_check = TRIM(SCRIPT_line, ' ', 'L')
+                    to_check = SCRIPT_line
 
                     IF to_check[1, 1] EQ ',' THEN
                         commit_version = to_check
@@ -576,8 +586,10 @@ xeccommit:
 
                 GOSUB ygetnextline
                 IF NOT(is_EOF) THEN
-                    IF SCRIPT_line[1, 1] EQ ' ' THEN
-                        to_check = TRIM(SCRIPT_line, ' ', 'L')
+*                    IF SCRIPT_line[1, 1] EQ ' ' THEN
+                    IF FIRST_space THEN
+*                        to_check = TRIM(SCRIPT_line, ' ', 'L')
+                        to_check = SCRIPT_line
                         FIND to_check IN COMMIT_options SETTING posn ELSE posn = 0
                         IF posn GT 0 THEN
                             commit_mode = COMMIT_options<posn>
@@ -770,12 +782,14 @@ xecexec:
 * optional expected return code
 
     GOSUB ygetnextline
-    IF is_EOF OR SCRIPT_line[1, 1] NE ' ' THEN
+*    IF is_EOF OR SCRIPT_line[1, 1] NE ' ' THEN
+    IF is_EOF OR NOT(FIRST_space) THEN
         check_ret_code = @FALSE
         GOSUB yrewind
     END ELSE
         check_ret_code = @TRUE
-        exp_ret_code = TRIM(SCRIPT_line, ' ', 'L')
+*        exp_ret_code = TRIM(SCRIPT_line, ' ', 'L')
+        exp_ret_code = SCRIPT_line
     END
 
     EXECUTE exec_cmd CAPTURING exec_screen RETURNING exec_ret_code RTNDATA exec_ret_data RTNLIST exec_ret_list
@@ -813,9 +827,11 @@ xecexit:
     END
 
     GOSUB ygetnextline
-    IF is_EOF OR SCRIPT_line[1, 1] NE ' ' THEN
+*    IF is_EOF OR SCRIPT_line[1, 1] NE ' ' THEN
+    IF is_EOF OR NOT(FIRST_space) THEN
         EXIT_code = 0
-    END ELSE EXIT_code = TRIM(SCRIPT_line, ' ', 'L')
+*    END ELSE EXIT_code = TRIM(SCRIPT_line, ' ', 'L')
+    END ELSE EXIT_code = SCRIPT_line
 
     IF NOT(ISDIGIT(EXIT_code)) THEN
         ERROR_message = 'Non-numeric exit code'
@@ -905,13 +921,15 @@ xecmove:
         IF cmds_qty EQ 1 THEN GOSUB ycheckcmdsyntax
         ELSE
             IF is_EOF THEN BREAK
-            IF SCRIPT_line[1, 1] NE ' ' THEN
+*            IF SCRIPT_line[1, 1] NE ' ' THEN
+            IF NOT(FIRST_space) THEN
                 GOSUB yrewind
                 BREAK
             END
         END
 
-        MACRO_name = TRIM(SCRIPT_line, ' ', 'L')
+*        MACRO_name = TRIM(SCRIPT_line, ' ', 'L')
+        MACRO_name = SCRIPT_line
 
         GOSUB ygetnextline
         GOSUB ycheckcmdsyntax
@@ -1525,12 +1543,14 @@ xecout:
             GOSUB ycheckcmdsyntax
         END ELSE
             IF is_EOF THEN BREAK
-            IF SCRIPT_line[1, 1] NE ' ' THEN
+*            IF SCRIPT_line[1, 1] NE ' ' THEN
+            IF NOT(FIRST_space) THEN
                 GOSUB yrewind
                 BREAK
             END
         END
-        output = TRIM(SCRIPT_line, ' ' , 'L')
+*        output = TRIM(SCRIPT_line, ' ' , 'L')
+        output = SCRIPT_line
         WRITESEQ output TO OUT_file_handles(out_file_no) ELSE
             ERROR_message = 'Error writing to output file for area number {}'
             CHANGE '{}' TO out_file_no IN ERROR_message
@@ -1553,12 +1573,14 @@ xecoutfile:
             GOSUB ycheckcmdsyntax
         END ELSE
             IF is_EOF THEN BREAK
-            IF SCRIPT_line[1, 1] NE ' ' THEN
+*            IF SCRIPT_line[1, 1] NE ' ' THEN
+            IF NOT(FIRST_space) THEN
                 GOSUB yrewind
                 BREAK
             END
         END
-        out_file_no = TRIM(SCRIPT_line, ' ' , 'L')
+*        out_file_no = TRIM(SCRIPT_line, ' ' , 'L')
+        out_file_no = SCRIPT_line
 
         IF OUT_file_names<out_file_no> NE '' THEN
             ERROR_message = 'Area number {} already used for output'
@@ -1633,7 +1655,8 @@ xecread:
 
     GOSUB ygetnextline
     GOSUB ycheckcmdsyntax
-    RECORD_id_curr = TRIM(SCRIPT_line, ' ', 'L')
+*    RECORD_id_curr = TRIM(SCRIPT_line, ' ', 'L')
+    RECORD_id_curr = SCRIPT_line
 
     FIND table_name IN FILE_fname_list SETTING posn ELSE posn = 0
     IF posn = 0 THEN
@@ -1694,13 +1717,15 @@ xecrunofs:
         IF cmds_qty EQ 1 THEN GOSUB ycheckcmdsyntax
         ELSE
             IF is_EOF THEN BREAK
-            IF SCRIPT_line[1, 1] NE ' ' THEN
+*            IF SCRIPT_line[1, 1] NE ' ' THEN
+            IF NOT(FIRST_space) THEN
                 GOSUB yrewind
                 BREAK
             END
         END
 
-        OFS_msg =  TRIM(SCRIPT_line, ' ', 'L')
+*        OFS_msg =  TRIM(SCRIPT_line, ' ', 'L')
+        OFS_msg = SCRIPT_line
 
         GOSUB ylaunchofs
 *        OFS_commit_ok, OFS_output:  '$OFSCOMMIT$' , '$OFSOUT$'
@@ -1735,12 +1760,14 @@ xecselect:
             END
             BREAK   ;* the very last command in the script - still we need to execute it to create saved list
         END
-        IF SCRIPT_line[1, 1] NE ' ' THEN
+*        IF SCRIPT_line[1, 1] NE ' ' THEN
+        IF NOT(FIRST_space) THEN
             GOSUB yrewind
             BREAK
         END
 
-        sel_cmd := ' ' : TRIM(SCRIPT_line, ' ', 'L')
+*        sel_cmd := ' ' : TRIM(SCRIPT_line, ' ', 'L')
+        sel_cmd := ' ' : SCRIPT_line
     REPEAT
 
     IF sel_cmd EQ 'SELECT' THEN
@@ -1808,7 +1835,8 @@ xecupdate:
             GOSUB doexit
         END
 
-        IF SCRIPT_line[1, 1] NE ' ' THEN
+*        IF SCRIPT_line[1, 1] NE ' ' THEN
+        IF NOT(FIRST_space) THEN
             IF updt_qty EQ 0 THEN
                 ERROR_message = 'No updates specified'
                 EXIT_code = 34
@@ -1819,7 +1847,8 @@ xecupdate:
             END
         END
 
-        updt_line = TRIM(SCRIPT_line, ' ', 'L')
+*        updt_line = TRIM(SCRIPT_line, ' ', 'L')
+        updt_line = SCRIPT_line
         FLD_name = FIELD(updt_line, ':', 1)
         vm_no = FIELD(updt_line, ':', 2)
         the_rest = FIELD(updt_line, ':', 3, 999999)
@@ -1838,13 +1867,19 @@ xecupdate:
             GOSUB doexit
         END
 
+        IF FLD_name EQ '@RECORD' THEN
+            RECORD_curr = new_data
+            updt_qty ++
+            CONTINUE
+        END
+
+        GOSUB yfindfield
+
         IF FLD_name EQ 'LOCAL.REF' THEN
             ERROR_message = 'Forbidden to specify LOCAL.REF, use local field name'
             EXIT_code = 24
             GOSUB doexit
         END
-
-        GOSUB yfindfield
 
         BEGIN CASE
 
@@ -1969,7 +2004,8 @@ ygetdict:
 ycheckcmdsyntax:
 * check if command contains all mandatory data
 
-    IF is_EOF OR SCRIPT_line[1, 1] NE ' ' THEN
+*    IF is_EOF OR SCRIPT_line[1, 1] NE ' ' THEN
+    IF is_EOF OR NOT(FIRST_space) THEN
         ERROR_message = 'Command "{1}" at line {2} not finished properly'
         CHANGE '{1}' TO CMD_line IN ERROR_message
         CHANGE '{2}' TO CMD_line_no IN ERROR_message
@@ -1977,19 +2013,26 @@ ycheckcmdsyntax:
         GOSUB doexit
     END
 
-    SCRIPT_line = TRIM(SCRIPT_line, ' ', 'L')
+*    SCRIPT_line = TRIM(SCRIPT_line, ' ', 'L')
 
     RETURN
 
 *----------------------------------------------------------------------------------------------------------------------------------
 yfindfield:
-* in: FLD_name
+* in: FLD_name (name or number)
 * out FLD_posn, IS_lref, LREF_posn
 
     IF RECORD_id_curr EQ '' THEN
         ERROR_message = 'No "read" command was executed yet'
         EXIT_code = 44
         GOSUB doexit
+    END
+
+    IF ISDIGIT(FLD_name) THEN
+        FLD_posn = FLD_name
+        FLD_name = DICT_list(FILE_no_curr)<FLD_name>
+        IS_lref = @FALSE
+        RETURN
     END
 
     FIND FLD_name IN DICT_list(FILE_no_curr) SETTING FLD_posn ELSE FLD_posn = 0
@@ -2014,7 +2057,6 @@ yfindfield:
             GOSUB doexit
         END
     END
-
 
     RETURN
 
@@ -2067,11 +2109,16 @@ ygetnextline:
                 GOSUB doexit
 
             END CASE
+            first_char = SCRIPT_line[1, 1]
         END
 
         BREAK
 
     REPEAT
+
+    IF first_char EQ ' ' THEN FIRST_space = @TRUE
+    ELSE FIRST_space = @FALSE
+    SCRIPT_line = TRIM(SCRIPT_line, ' ', 'L')   ;* it's vital to do it before macros substitution - thus we'll keep leading $SPACE$'s
 
     IF CMD_line NE 'move' THEN
         macro_qty = INMAT(MACRO_list)
