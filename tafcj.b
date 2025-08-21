@@ -4,9 +4,12 @@ PROGRAM tafcj
     INCLUDE JBC.h
     $INSERT I_COMMON
     $INSERT I_EQUATE
+    $INSERT I_GTS.COMMON
 
     $INSERT I_F.OFS.SOURCE
     $INSERT I_F.OFS.REQUEST.DETAIL
+
+    CRT 'tafcj script interpreter v. 0.93'
 
     GOSUB initvars
     GOSUB parseparams
@@ -34,12 +37,23 @@ doexit:
         out_qty = INMAT(OUT_file_handles)
         FOR i = 1 TO out_qty
             IF ASSIGNED(OUT_file_handles(i)) AND OUT_file_handles(i) NE '' THEN
-                info_msg = '[INFO] Closing {}...'
-                CHANGE '{}' TO OUT_file_names<i> IN info_msg
-                IF EXIT_code NE 1000 THEN CRT info_msg
+                IF EXIT_code NE 1000 THEN
+                    info_msg = '[INFO] Closing {}...'
+                    CHANGE '{}' TO FILEINFO(OUT_file_handles(i), 1)<20> IN info_msg
+                    CRT info_msg
+                END
                 CLOSESEQ OUT_file_handles(i)
             END
         NEXT i
+    END
+
+    IF DUP_file NE '' THEN
+        IF EXIT_code NE 1000 THEN
+            info_msg = '[INFO] Closing {}...'
+            CHANGE '{}' TO FILEINFO(f_DUP_file, 1)<20> IN info_msg
+            CRT info_msg
+        END
+        CLOSESEQ f_DUP_file
     END
 
     IF EXIT_code EQ 0 THEN CRT '[INFO] Finished successfully'
@@ -54,20 +68,24 @@ doexit:
     IF EXIT_code EQ 1000 THEN EXIT_code = 0
     ELSE CRT 'Elapsed time: ' : FMT(TIMESTAMP() - START_time, 'R2') : ' s.'
 
+* otherwise infinite loop in WORLD.DISPLAY.b on EX invocation
+    GTSACTIVE = ''
+
     EXIT(EXIT_code)
 
 *----------------------------------------------------------------------------------------------------------------------------------
 dohelp:
 
-    CRT 'tafcj script interpreter by V.Kazimirchik'
+    CRT 'by V.Kazimirchik'
     CRT 'Parameters:'
     CRT '------------------------------------'
     CRT '1st one - OFS.SOURCE @ID (or "-" if login to T24 is not necessary)'
     CRT '-s:script_file'
     CRT 'Ones below are optional'
-    CRT '-l:        T24 login'
-    CRT '-p:        T24 password'
-    CRT '-var:      pass a variable, e.g. -var:dayno:T1'
+    CRT '-l:<login>     T24 login'
+    CRT '-p:<password>  T24 password'
+    CRT '-var:<value>   pass a variable, e.g. -var:dayno:T1'
+    CRT '-a:<file>      duplicate all alerts to file'
 
     RETURN
 
@@ -110,6 +128,8 @@ initvars:
     OUT_file_names = ''
     DIM OUT_file_handles(1)
     MAT OUT_file_handles = ''
+
+    DUP_dir = ''  ;  DUP_file = ''   ; f_DUP_file = ''
 
     RECORD_curr = ''
     RECORD_curr_init = ''
@@ -243,6 +263,39 @@ parseparams:
             END
 
             GOSUB ysetmacro
+
+        CASE par_name EQ '-a'   ;* 2024-01-19 19:40 duplicate all alerts to file
+
+            out_file_spec = FIELD(a_param, ':', 2, 999)
+            CHANGE '/' TO @FM IN out_file_spec
+            CHANGE '\' TO @FM IN out_file_spec
+            slash_qty = COUNT(out_file_spec, @FM)
+            IF slash_qty EQ 0 THEN
+                DUP_dir = '.'
+                DUP_file = out_file_spec
+            END ELSE
+                DUP_dir = FIELD(out_file_spec, @FM, 1, slash_qty)
+                DUP_file = out_file_spec<slash_qty + 1>
+                CHANGE @FM TO DIR_DELIM_CH IN DUP_dir
+            END
+
+            IF INDEX(DUP_file, '$', 1) THEN        ;*  see https://strftime.org/  .. can't use "%" in Teamcity
+                cur_date = OCONV(DATE(), 'DG')
+                cur_time = OCONV(TIME(), 'MTS')
+                CHANGE '$Y$' TO cur_date[1, 4] IN DUP_file
+                CHANGE '$m$' TO cur_date[5, 2] IN DUP_file
+                CHANGE '$d$' TO cur_date[7, 2] IN DUP_file
+                CHANGE '$H$' TO cur_time[1, 2] IN DUP_file
+                CHANGE '$M$' TO cur_time[4, 2] IN DUP_file
+                CHANGE '$S$' TO cur_time[7, 2] IN DUP_file
+
+                CHANGE '$A$' TO OCONV(DATE(), 'DWA') IN DUP_file
+                CHANGE '$a$' TO OCONV(DATE(), 'DWA')[1,3] IN DUP_file
+                CHANGE '$B$' TO OCONV(DATE(), 'DMA') IN DUP_file
+                CHANGE '$b$' TO OCONV(DATE(), 'DMA')[1,3] IN DUP_file
+
+                CHANGE '$TODAY$' TO TODAY IN DUP_file
+            END
 
         CASE par_name EQ '-s'
             SCRIPT_file = FIELD(a_param, ':', 2, 99)
@@ -431,30 +484,29 @@ runscript:
 *----------------------------------------------------------------------------------------------------------------------------------
 xecalert:
 
-    GOSUB ygetnextline
-    GOSUB ycheckcmdsyntax
-    ALERT_msg = SCRIPT_line
-    GOSUB yprocalertmsg
-
-    IF RIGHT(ALERT_msg, 1) EQ ':' THEN
-        ALERT_msg = ALERT_msg[1, LEN(ALERT_msg) - 1]
-        CRT ALERT_msg :
-    END ELSE CRT ALERT_msg
-
-    INFO_list<-1> = '[INFO] ' : ALERT_msg
+    alert_no = 0
 
     LOOP
         GOSUB ygetnextline
-        IF is_EOF THEN RETURN
-*        IF SCRIPT_line[1, 1] NE ' ' THEN
-        IF NOT(FIRST_space) THEN
-            GOSUB yrewind
-            BREAK
+        IF alert_no EQ 0 THEN GOSUB ycheckcmdsyntax
+        ELSE
+            IF is_EOF THEN RETURN
+            IF NOT(FIRST_space) THEN
+                GOSUB yrewind
+                BREAK
+            END
         END
-*        ALERT_msg = TRIM(SCRIPT_line, ' ', 'L')
+
+        alert_no ++
         ALERT_msg = SCRIPT_line
         GOSUB yprocalertmsg
-        CRT ALERT_msg
+
+        IF RIGHT(ALERT_msg, 1) EQ ':' THEN
+            ALERT_msg = ALERT_msg[1, LEN(ALERT_msg) - 1]
+            CRT ALERT_msg :
+        END ELSE CRT ALERT_msg
+
+        GOSUB yalertdup
         INFO_list<-1> = '[INFO] ' : ALERT_msg
 
     REPEAT
@@ -491,7 +543,6 @@ xecclone:
 
     GOSUB ygetnextline
     GOSUB ycheckcmdsyntax
-*    rec_id_cloned = TRIM(SCRIPT_line, ' ', 'L')
     rec_id_cloned = SCRIPT_line
 
 * this might be non-current table, like clone from $HIS to LIVE
@@ -537,7 +588,6 @@ xeccommit:
         LOOP
             GOSUB ygetnextline
             IF is_EOF THEN BREAK
-*            IF SCRIPT_line[1, 1] NE ' ' THEN
             IF NOT(FIRST_space) THEN
                 GOSUB yrewind
                 BREAK
@@ -551,9 +601,7 @@ xeccommit:
     commit_version = ','   ;* default
 
     GOSUB ygetnextline
-*    IF SCRIPT_line[1, 1] EQ ' ' THEN
     IF FIRST_space THEN
-*        to_check = TRIM(SCRIPT_line, ' ', 'L')
         to_check = SCRIPT_line
 
         FIND to_check IN COMMIT_options SETTING posn ELSE posn = 0
@@ -562,9 +610,7 @@ xeccommit:
 
             GOSUB ygetnextline
             IF NOT(is_EOF) THEN
-*                IF SCRIPT_line[1, 1] EQ ' ' THEN
                 IF FIRST_space THEN
-*                    to_check = TRIM(SCRIPT_line, ' ', 'L')
                     to_check = SCRIPT_line
 
                     IF to_check[1, 1] EQ ',' THEN
@@ -586,9 +632,7 @@ xeccommit:
 
                 GOSUB ygetnextline
                 IF NOT(is_EOF) THEN
-*                    IF SCRIPT_line[1, 1] EQ ' ' THEN
                     IF FIRST_space THEN
-*                        to_check = TRIM(SCRIPT_line, ' ', 'L')
                         to_check = SCRIPT_line
                         FIND to_check IN COMMIT_options SETTING posn ELSE posn = 0
                         IF posn GT 0 THEN
@@ -782,13 +826,11 @@ xecexec:
 * optional expected return code
 
     GOSUB ygetnextline
-*    IF is_EOF OR SCRIPT_line[1, 1] NE ' ' THEN
     IF is_EOF OR NOT(FIRST_space) THEN
         check_ret_code = @FALSE
         GOSUB yrewind
     END ELSE
         check_ret_code = @TRUE
-*        exp_ret_code = TRIM(SCRIPT_line, ' ', 'L')
         exp_ret_code = SCRIPT_line
     END
 
@@ -827,10 +869,8 @@ xecexit:
     END
 
     GOSUB ygetnextline
-*    IF is_EOF OR SCRIPT_line[1, 1] NE ' ' THEN
     IF is_EOF OR NOT(FIRST_space) THEN
         EXIT_code = 0
-*    END ELSE EXIT_code = TRIM(SCRIPT_line, ' ', 'L')
     END ELSE EXIT_code = SCRIPT_line
 
     IF NOT(ISDIGIT(EXIT_code)) THEN
@@ -921,14 +961,12 @@ xecmove:
         IF cmds_qty EQ 1 THEN GOSUB ycheckcmdsyntax
         ELSE
             IF is_EOF THEN BREAK
-*            IF SCRIPT_line[1, 1] NE ' ' THEN
             IF NOT(FIRST_space) THEN
                 GOSUB yrewind
                 BREAK
             END
         END
 
-*        MACRO_name = TRIM(SCRIPT_line, ' ', 'L')
         MACRO_name = SCRIPT_line
 
         GOSUB ygetnextline
@@ -1543,13 +1581,11 @@ xecout:
             GOSUB ycheckcmdsyntax
         END ELSE
             IF is_EOF THEN BREAK
-*            IF SCRIPT_line[1, 1] NE ' ' THEN
             IF NOT(FIRST_space) THEN
                 GOSUB yrewind
                 BREAK
             END
         END
-*        output = TRIM(SCRIPT_line, ' ' , 'L')
         output = SCRIPT_line
         WRITESEQ output TO OUT_file_handles(out_file_no) ELSE
             ERROR_message = 'Error writing to output file for area number {}'
@@ -1573,13 +1609,11 @@ xecoutfile:
             GOSUB ycheckcmdsyntax
         END ELSE
             IF is_EOF THEN BREAK
-*            IF SCRIPT_line[1, 1] NE ' ' THEN
             IF NOT(FIRST_space) THEN
                 GOSUB yrewind
                 BREAK
             END
         END
-*        out_file_no = TRIM(SCRIPT_line, ' ' , 'L')
         out_file_no = SCRIPT_line
 
         IF OUT_file_names<out_file_no> NE '' THEN
@@ -1655,7 +1689,6 @@ xecread:
 
     GOSUB ygetnextline
     GOSUB ycheckcmdsyntax
-*    RECORD_id_curr = TRIM(SCRIPT_line, ' ', 'L')
     RECORD_id_curr = SCRIPT_line
 
     FIND table_name IN FILE_fname_list SETTING posn ELSE posn = 0
@@ -1717,14 +1750,12 @@ xecrunofs:
         IF cmds_qty EQ 1 THEN GOSUB ycheckcmdsyntax
         ELSE
             IF is_EOF THEN BREAK
-*            IF SCRIPT_line[1, 1] NE ' ' THEN
             IF NOT(FIRST_space) THEN
                 GOSUB yrewind
                 BREAK
             END
         END
 
-*        OFS_msg =  TRIM(SCRIPT_line, ' ', 'L')
         OFS_msg = SCRIPT_line
 
         GOSUB ylaunchofs
@@ -1760,13 +1791,11 @@ xecselect:
             END
             BREAK   ;* the very last command in the script - still we need to execute it to create saved list
         END
-*        IF SCRIPT_line[1, 1] NE ' ' THEN
         IF NOT(FIRST_space) THEN
             GOSUB yrewind
             BREAK
         END
 
-*        sel_cmd := ' ' : TRIM(SCRIPT_line, ' ', 'L')
         sel_cmd := ' ' : SCRIPT_line
     REPEAT
 
@@ -1835,7 +1864,6 @@ xecupdate:
             GOSUB doexit
         END
 
-*        IF SCRIPT_line[1, 1] NE ' ' THEN
         IF NOT(FIRST_space) THEN
             IF updt_qty EQ 0 THEN
                 ERROR_message = 'No updates specified'
@@ -1847,7 +1875,6 @@ xecupdate:
             END
         END
 
-*        updt_line = TRIM(SCRIPT_line, ' ', 'L')
         updt_line = SCRIPT_line
         FLD_name = FIELD(updt_line, ':', 1)
         vm_no = FIELD(updt_line, ':', 2)
@@ -1921,6 +1948,22 @@ xecupdate:
 
 *----------------------------------------------------------------------------------------------------------------------------------
 *----------------------------------------------------------------------------------------------------------------------------------
+*----------------------------------------------------------------------------------------------------------------------------------
+yalertdup:
+
+    IF DUP_file NE '' THEN
+        IF f_DUP_file EQ '' THEN
+            OPENSEQ DUP_dir, DUP_file TO f_DUP_file THEN
+                WEOFSEQ f_DUP_file
+            END ELSE
+                CREATE f_DUP_file ELSE ERROR_message = 'Unable to create output file ' : DUP_dir : DIR_DELIM_CH : DUP_file  ;  GOSUB doexit
+            END
+        END
+        WRITESEQ ALERT_msg TO f_DUP_file ELSE ERROR_message = 'Unable to write to output file'  ;  GOSUB doexit
+    END
+
+    RETURN
+
 *----------------------------------------------------------------------------------------------------------------------------------
 yaudtload:
 
@@ -2004,7 +2047,6 @@ ygetdict:
 ycheckcmdsyntax:
 * check if command contains all mandatory data
 
-*    IF is_EOF OR SCRIPT_line[1, 1] NE ' ' THEN
     IF is_EOF OR NOT(FIRST_space) THEN
         ERROR_message = 'Command "{1}" at line {2} not finished properly'
         CHANGE '{1}' TO CMD_line IN ERROR_message
@@ -2013,7 +2055,6 @@ ycheckcmdsyntax:
         GOSUB doexit
     END
 
-*    SCRIPT_line = TRIM(SCRIPT_line, ' ', 'L')
 
     RETURN
 
