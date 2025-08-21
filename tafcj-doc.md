@@ -28,7 +28,7 @@ This command will run a script qwerty.tcj in bnk.run. If a script from other fol
     tafcj PW.MODEL -s:..\qwerty.tcj
     tafcj PW.MODEL -s:../qwerty.tcj
 
-"Minus" (-) can be used instead of OFS.SOURCE ID if there;s no need to amend data (e.g.for reports).
+"Minus" (-) can be used instead of OFS.SOURCE ID if there's no need to amend data (e.g.for reports).
 
 If the script interpreter is run without parameters - the full list of them is being output. See chapter [parameters](#parameters).
 
@@ -305,6 +305,20 @@ Update a field in the record being read into buffer. Syntax is OFS-like.
         APPLICATION:-1:1=SC.SETTLEMENT,ACT.SETT I E
         DESCRIPT:-1:1=Unauth Actual Settlement
 
+    # address field by number
+    read
+        F.LOCKING
+        FBNK.FOREX
+    update
+        2::=FX2000100002
+
+    # update whole record
+    read
+        F.LOCKING
+        FBNK.FOREX
+    update
+        @RECORD::=FX2332400001$FM$FX2000100001
+
 ##### Note
 
 *Be careful in adding associations - all associated fields must be mentioned, even no-input and empty ones.*
@@ -476,6 +490,19 @@ Output:
 
     A (@FM) BB (@VM) CCC (@SM) 0
 
+*Note: spaces in "const" instructions are preserved (unlike in "function"), e.g.:*
+
+    move
+        var
+        const
+            (A   B     C)
+    alert
+        var
+
+Output:
+
+   (A&nbsp;&nbsp;&nbsp;B&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;C)
+
 See also: [Standard macros](#stdmacros).
 
 ##### field
@@ -495,6 +522,16 @@ See also: [Standard macros](#stdmacros).
 
 Output:
     Seattle, OPT-IN
+
+Core field can be addressed by its number:
+
+    read
+        FBNK.CUSTOMER
+        100100
+    move
+        tc
+        field
+            7
 
 ##### func
 
@@ -563,6 +600,22 @@ More examples:
     alert
         $outp$
     # output: AB+++D-F+D*,
+
+    move
+        var
+        func
+            DQUOTE( A   B     C)
+    alert
+        $var$
+    # output: "ABC"
+
+    move
+        var
+        func
+            DQUOTE( A$SPACE$B     C)
+    alert
+        $var$
+    # output: "A BC"
 
 In this example conditional TAFC/TAFJ script lines are shown:
 
@@ -830,6 +883,8 @@ Enter the debugger.
                       | -var:date:20170630 (mask spaces with #20)
                       | -var:equ:A#3dB (mask "=" with #3d)
                       | -var:rec:SPF#3eSYSTEM (mask ">" with #3e)
+    -------------------------------------------------------------
+    -a:<file>         | duplicate all alerts to file
     -------------------------------------------------------------
 
 ## retcodes
