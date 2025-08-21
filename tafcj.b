@@ -9,7 +9,7 @@ PROGRAM tafcj
     $INSERT I_F.OFS.SOURCE
     $INSERT I_F.OFS.REQUEST.DETAIL
 
-    CRT 'tafcj script interpreter v. 0.93'
+    CRT 'tafcj script interpreter v. 0.94'
 
     GOSUB initvars
     GOSUB parseparams
@@ -1222,35 +1222,29 @@ xecmove:
                 IF args_qty EQ 2 THEN
                     FIND args_list(1) IN args_list(2) SETTING fm_posn, vm_posn, sm_posn ELSE
                         fm_posn = -1
-                        vm_posn = -1
-                        sm_posn = -1
                     END
                 END ELSE
                     FIND args_list(1) IN args_list(2), args_list(3) SETTING fm_posn, vm_posn, sm_posn ELSE
                         fm_posn = -1
-                        vm_posn = -1
-                        sm_posn = -1
                     END
                 END
 
-                MACRO_value = fm_posn :@FM: vm_posn :@FM: sm_posn
+                IF fm_posn EQ -1 THEN MACRO_value = -1
+                ELSE MACRO_value = fm_posn :@FM: vm_posn :@FM: sm_posn
 
             CASE func_name EQ 'FINDSTR'
                 IF args_qty EQ 2 THEN
                     FINDSTR args_list(1) IN args_list(2) SETTING fm_posn, vm_posn, sm_posn ELSE
                         fm_posn = -1
-                        vm_posn = -1
-                        sm_posn = -1
                     END
                 END ELSE
                     FINDSTR args_list(1) IN args_list(2), args_list(3) SETTING fm_posn, vm_posn, sm_posn ELSE
                         fm_posn = -1
-                        vm_posn = -1
-                        sm_posn = -1
                     END
                 END
 
-                MACRO_value = fm_posn :@FM: vm_posn :@FM: sm_posn
+                IF fm_posn EQ -1 THEN MACRO_value = -1
+                ELSE MACRO_value = fm_posn :@FM: vm_posn :@FM: sm_posn
 
             CASE func_name EQ 'FMT'
                 MACRO_value = FMT(args_list(1), args_list(2))
