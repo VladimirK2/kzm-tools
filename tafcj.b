@@ -9,7 +9,7 @@ PROGRAM tafcj
     $INSERT I_F.OFS.SOURCE
     $INSERT I_F.OFS.REQUEST.DETAIL
 
-    CRT 'tafcj script interpreter v. 0.94'
+    CRT 'tafcj script interpreter v. 0.96'
 
     GOSUB initvars
     GOSUB parseparams
@@ -368,14 +368,6 @@ readscript:
         EXIT_code = 9
         GOSUB doexit
     END
-
-* this code gives status 9 in TAFJ but the script is read successfully
-*    ret_stat = STATUS()
-*    IF ret_stat NE 0 THEN
-*        ERROR_message = 'Script file - read error (status = ' : DQUOTE(ret_stat) : ')'
-*        EXIT_code = 9
-*        GOSUB doexit
-*    END
 
     OSCLOSE f_in
 
@@ -906,7 +898,7 @@ xecgetlist:
         posn = sel_qty
     END
 
-     GETLIST sel_list_name TO SELECT_list(posn) ELSE
+    GETLIST sel_list_name TO SELECT_list(posn) ELSE
         ERROR_message = 'SELECT list does not exist'
         EXIT_code = 42
         GOSUB doexit
@@ -1023,8 +1015,6 @@ xecmove:
 
         CASE eval_keyword EQ 'func'
 
-            CHANGE ' ' TO '' IN eval_cmd
-
             parn_open = INDEX(eval_cmd, '(', 1)  ;  parn_close = INDEX(eval_cmd, ')', 1)
 
             IF NOT(parn_open) OR NOT(parn_close) THEN
@@ -1039,9 +1029,16 @@ xecmove:
                 GOSUB doexit
             END
 
-            func_name = eval_cmd[1, parn_open - 1]
+            func_name = TRIM(eval_cmd[1, parn_open - 1], ' ', 'B')
             args_raw_list = eval_cmd[parn_open + 1, (parn_close - 1 - parn_open)]
-            args_qty = DCOUNT(args_raw_list, ',')
+            BEGIN CASE
+            CASE TRIM(args_raw_list, ' ', 'B') EQ ''
+                args_qty = 0
+            CASE INDEX(args_raw_list, ',', 1)
+                args_qty = DCOUNT(args_raw_list, ',')
+            CASE 1
+                args_qty = 1
+            END CASE
 
 * no args
             FUNC_args = '_DATE_TIME_FILEINFO_GETCWD_INPUT_TIMEDATE_TIMESTAMP_UNIQUEKEY_'
@@ -1051,7 +1048,7 @@ xecmove:
             FUNC_args<2> := 'SUM_SYSTEM_TRIM_UPCASE_XTD_'
 * 2 args
             FUNC_args<3> = '_ADDS_ANDS_CATS_CHANGETIMESTAMP_COUNT_COUNTS_DCOUNT_DEL_DIV_DIVS_DROUND_EQ_EQS_EXTRACT_FADD_FDIV_FIND_FINDSTR_FMUL_FMT_FMTS_FOLD_FSUB_'
-            FUNC_args<3> := 'GE_GES_GT_ICONV_ICONVS_LE_LEFT_LES_LOCALDATE_LOCALTIME_MATCHES_MOD_MODS_MULS_NE_NES_OCONV_OCONVS_ORS_PWR_REGEXP_RIGHT_SADD_SDIV_SMUL_'
+            FUNC_args<3> := 'GE_GES_GT_ICONV_ICONVS_LE_LEFT_LES_LOCALDATE_LOCALTIME_LT_MATCHES_MOD_MODS_MULS_NE_NES_OCONV_OCONVS_ORS_PWR_REGEXP_RIGHT_SADD_SDIV_SMUL_'
             FUNC_args<3> := 'STR_STRS_SSUB_SUBS_TRIM_'
 * 3 args
             FUNC_args<4> =  '_CHANGE_CONVERT_DEL_EREPLACE_EXTRACT_FIELD_FIELDS_FIND_FINDSTR_IFS_INDEX_INS_MAKETIMESTAMP_MATCHFIELD_REPLACE_SPLICE_SUBSTRINGS_'
@@ -1080,7 +1077,7 @@ xecmove:
             MAT args_list = ''
 
             FOR i_arg = 1 TO args_qty
-                the_arg = FIELD(args_raw_list, ',' , i_arg)
+                the_arg = TRIM(FIELD(args_raw_list, ',' , i_arg), ' ', 'B')   ;* keep spaces inside
 
                 macro_qty = INMAT(MACRO_list)
                 FOR i = 1 TO macro_qty
@@ -1333,14 +1330,14 @@ xecmove:
             CASE func_name EQ 'ISUPPER'
                 MACRO_value = ISUPPER(args_list(1))
 
+            CASE func_name EQ 'LE'
+                MACRO_value = (args_list(1) LE args_list(2))
+
             CASE func_name EQ 'LEFT'
                 MACRO_value = LEFT(args_list(1), args_list(2))
 
             CASE func_name EQ 'LEN'
                 MACRO_value = LEN(args_list(1))
-
-            CASE func_name EQ 'LE'
-                MACRO_value = (args_list(1) LE args_list(2))
 
             CASE func_name EQ 'LENS'
                 MACRO_value = LENS(args_list(1))
@@ -1356,6 +1353,9 @@ xecmove:
 
             CASE func_name EQ 'LOWER'
                 MACRO_value = LOWER(args_list(1))
+
+            CASE func_name EQ 'LT'
+                MACRO_value = (args_list(1) LT args_list(2))
 
             CASE func_name EQ 'MAKETIMESTAMP'
                 MACRO_value = MAKETIMESTAMP(args_list(1), args_list(2), args_list(3))
@@ -1455,17 +1455,9 @@ xecmove:
                 MACRO_value = SEQ(args_list(1))
 
             CASE func_name EQ 'SEQS'
-
                 seqs_in = args_list(1)
                 GOSUB yseqsemu
                 MACRO_value = seqs_out
-
-*                MACRO_value = SEQS(args_list(1))          ;* uncomment under TAFC - doesn't compile under tAFJ
-*                IF TAFJ_on THEN
-*                    ERROR_message = 'Function SEQS is not supported'
-*                    EXIT_code = 999
-*                    GOSUB doexit
-*                END
 
             CASE func_name EQ 'SMUL'
                 MACRO_value = SMUL(args_list(1), args_list(2))
@@ -1718,7 +1710,7 @@ xecread:
             RECORD_curr<REC_STAT_posn + 3> = OCONV(DATE(), 'DG')[3,6] : OCONV(OCONV(TIME(), 'MT'), 'MCC;:;')  ;* DATE.TIME TODO update on commit
             RECORD_curr<REC_STAT_posn + 4> = ''  ;* AUTHORISER
             RECORD_curr<REC_STAT_posn + 5> = COMPANY_curr  ;*  CO.CODE
-            RECORD_curr<REC_STAT_posn + 6> = 1  ;* DEPT.CODE - TODO update on LIVE/INAU commit
+            RECORD_curr<REC_STAT_posn + 6> = 1  ;* DEPT.CODE
         END
 
     END
@@ -1999,25 +1991,25 @@ ygetdict:
 
             dict_type = r_dict<1>
             BEGIN CASE
-                CASE dict_type EQ 'D'
-                    dict_num = r_dict<2>
-                    IF dict_num EQ '0' OR NOT(ISDIGIT(dict_num)) THEN CONTINUE
+            CASE dict_type EQ 'D'
+                dict_num = r_dict<2>
+                IF dict_num EQ '0' OR NOT(ISDIGIT(dict_num)) THEN CONTINUE
 
-                    IF dict_sel_list<dict_num> EQ '' THEN dict_sel_list<dict_num> = dict_id
-                    ELSE dict_sel_list<dict_num> := @VM: dict_id   ;* all FINDs will work
+                IF dict_sel_list<dict_num> EQ '' THEN dict_sel_list<dict_num> = dict_id
+                ELSE dict_sel_list<dict_num> := @VM: dict_id   ;* all FINDs will work
 
-                CASE dict_type EQ 'I'   ;* take local.ref only
-                    dict_descr = r_dict<2>
-                    IF dict_descr[1, 9] EQ 'LOCAL.REF' THEN
-                        dict_num = FIELD(dict_descr, ',', 2)
-                        CHANGE '>' TO '' IN dict_num
-                        CHANGE ' ' TO '' IN dict_num
+            CASE dict_type EQ 'I'   ;* take local.ref only
+                dict_descr = r_dict<2>
+                IF dict_descr[1, 9] EQ 'LOCAL.REF' THEN
+                    dict_num = FIELD(dict_descr, ',', 2)
+                    CHANGE '>' TO '' IN dict_num
+                    CHANGE ' ' TO '' IN dict_num
 
-                        IF ISDIGIT(dict_num) THEN
-                            IF dict_sel_list_lref<dict_num> EQ '' THEN dict_sel_list_lref<dict_num> = dict_id
-                            ELSE dict_sel_list_lref<dict_num> := @VM: dict_id   ;* all FINDs will work
-                        END
+                    IF ISDIGIT(dict_num) THEN
+                        IF dict_sel_list_lref<dict_num> EQ '' THEN dict_sel_list_lref<dict_num> = dict_id
+                        ELSE dict_sel_list_lref<dict_num> := @VM: dict_id   ;* all FINDs will work
                     END
+                END
 
             END CASE
 
