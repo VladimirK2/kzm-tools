@@ -641,6 +641,43 @@ Output (TAFJ):
 
     C:\temenos\TAFJ
 
+*Pseudo-functions FIND() and FINDSTR() - if successful - return @FM-delimited dynamic array with @FM/@VM/@SM positions of found text; and -1 if insuccessful:*
+
+    read
+        F.HELPTEXT.MENU
+    =TAFC    AC.MENU
+    =TAFJ    ACCOUNT.ENTRY
+    move
+        appl
+        field
+            APPLICATION
+        tofind
+        const
+    =TAFC        ACCOUNT.STATEMENT
+    =TAFJ        ENQ ACCT.STMT.HIST
+        found
+        func
+            FIND( $tofind$, $appl$ )
+    alert
+        $found$
+    move
+        random
+        func
+            RND(100000)
+        tofind
+        const
+            ACCOUNT, I F3 $random$
+        found
+        func
+            FIND( $tofind$, $appl$ )
+    alert
+        $found$
+
+Output:
+
+    1 (@FM) 5 (@FM) 1
+    -1
+
 ##### subr
 
 Call a "EVAL" subroutine - one that can be used in jQL EVAL(). Example:
