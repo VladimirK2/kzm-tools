@@ -1,3 +1,3 @@
 T24 TAFC/TAFJ scripting
 =========
-See tafcj-doc.md.
+See documentation in tafcj-doc.md.
