@@ -9,7 +9,7 @@ PROGRAM tafcj
     $INSERT I_F.OFS.SOURCE
     $INSERT I_F.OFS.REQUEST.DETAIL
 
-    CRT 'tafcj script interpreter v. 0.96'
+    CRT 'tafcj script interpreter v. 0.97'
 
     GOSUB initvars
     GOSUB parseparams
@@ -47,7 +47,7 @@ doexit:
         NEXT i
     END
 
-    IF DUP_file NE '' THEN
+    IF DUP_file NE '' AND f_DUP_file NE '' THEN
         IF EXIT_code NE 1000 THEN
             info_msg = '[INFO] Closing {}...'
             CHANGE '{}' TO FILEINFO(f_DUP_file, 1)<20> IN info_msg
