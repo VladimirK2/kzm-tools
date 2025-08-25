@@ -6,11 +6,12 @@ By V.Kazimirchik.
 
 Data management tools used in T24 (e.g. Data Library, BCON) have a certain drawback: they replace a record fully - and this puts a severe limitation to team work with data. Example: 2 developers at the same time amend a HELPTEXT.MENU record....
 
-TAFCJ script allows conditional update of data records. It's called "TAFCJ" because it works both in TAFC and TAFJ. It's a jBC program.
+TAFCJ script allows conditional update of data records. It's called "TAFCJ" because it works both in TAFC and TAFJ. Script interpreter is a jBC program.
 
 ## Is it safe assuming T24 transactions, concat files update etc?
 
-Yes, it uses OFS to update a record (to be exact - OFS.BULK.MANAGER). Firstly the full record image is written to $NAU file with IHLD status; then OFS with "I" function and zero authorisation is performed (can be other update options - leave in INAU or IHLD, for example). In case of an error IHLD record is deleted.
+Yes, it uses OFS to update a record (to be exact - OFS.BULK.MANAGER). Firstly the full record image is written to $NAU file with IHLD status; then OFS with "I" function and zero authorisation is performed (can be other update options - leave in INAU or IHLD, for example). (Note: if record in \$NAU file exists already, fatal error will be raised.)
+In case of OFS error IHLD record is deleted.
 
 ## How to run
 
@@ -77,7 +78,7 @@ Labels are case-sensitive. They can be addressed via a macro (but can't contain 
     move
         t24rel
         field
-        CURRENT.RELEASE
+            CURRENT.RELEASE
     jump
         :proc$t24rel$
     :procR19
@@ -90,7 +91,7 @@ Labels are case-sensitive. They can be addressed via a macro (but can't contain 
         Newer release
     :fini
 
-See also: [move](#move), [jump](#jump)
+See also: [read](#read), [move](#move), [jump](#jump)
 
 ### Other notes
 
@@ -98,13 +99,17 @@ Empty lines are ignored.
 
 Non-ASCII (or extended-ASCII) characters result in fatal error (ASCII 32 to 126 are allowed only). If non-allowed characters are necessary in the data or screen output, function CHAR(nnn) has to be applied.
 
-### Commands (in the order that allows better learning process)
+### Commands
 
 Commands are case-sensitive. Each command should occupy one line; command options follow on next line(s) with left offset at least 1 space or tab.
 
 All examples contain the data from Temenos Model Bank R23 running on Windows Server 2019.
 
-Alphabetical index: [alert](#alert) | [clear](#clear) | [clone](#clone) | [commit](#commit) | [company](#company) | [debug](#debug)  | [default](#default) | [delete](#delete) | [exec](#exec)  | [exit](#exit) | [getlist](#getlist) | [getnext](#getnext) | [jump](#jump) | [move](#move) | [out](#out) / [outfile](#outfile) | [precision](#precision) | [read](#read) | [runofs](#runofs) | [select](#select) | [sleep](#sleep) | [update](#update)
+### Commands (alphabetical index)
+
+[alert](#alert) | [clear](#clear) | [clone](#clone) | [commit](#commit) | [company](#company) | [debug](#debug)  | [default](#default) | [delete](#delete) | [exec](#exec)  | [exit](#exit) | [getlist](#getlist) | [getnext](#getnext) | [jump](#jump) | [move](#move) | [out](#out) / [outfile](#outfile) | [precision](#precision) | [read](#read) | [runofs](#runofs) | [select](#select) | [sleep](#sleep) | [update](#update)
+
+### Commands (in the order that allows better learning process)
 
 #### alert
 
@@ -138,7 +143,7 @@ The return code presents in the screen output:
     Script line: 3
     Elapsed time: 0.01 s.
 
-Return codes provided by the interprerer: [Return codes](#retcodes).
+Return codes provided by the interpreter: [Return codes](#retcodes).
 
 #### exec
 
@@ -220,7 +225,7 @@ Read a record into record buffer. Examples:
         F.COMPANY
         GB0010001
 
-A non-existing record can be specified for further population and update.
+A non-existing record can be specified for further population and saving.
 
 After read command system macros \$RECORD\$, \$DICT\$ and \$LREF\$ are available:
 
@@ -406,7 +411,7 @@ Or:
 
 #### jump
 
-Non-conditional jump to a label.
+Pass execution to a line after specified label.
 
     # do something 5 times
     move
@@ -435,7 +440,7 @@ See also: [move](#move).
 
 #### select
 
-Proceed with jQL SELECT
+Proceed with jQL SELECT.
 
     select
     # name of the resulting SELECT list
@@ -455,7 +460,16 @@ Proceed with jQL SELECT
         :strt
     # special label where we go when SELECT list is exhausted
     :no_more_LOCKING_SEL
-    exit 0
+    exit
+        1000
+
+Output:
+
+    FBNK.ORDER.BY.CUST
+    FBNK.FT.BULK.CREDIT.AC
+    FBNK.DX.PRICE.INPUT
+    FBNK.DX.REVALUE
+    FBNK.DIARY
 
 #### getlist
 
@@ -490,7 +504,7 @@ Output:
 
     A (@FM) BB (@VM) CCC (@SM) 0
 
-*Note: spaces in "const" instructions are preserved (unlike in "function"), e.g.:*
+*Note: spaces in "const" instructions are preserved, e.g.:*
 
     move
         var
@@ -564,7 +578,7 @@ Notes:
 
 *Commas in function parameters shall be represented as \$COMMA\$*.
 
-*Spaces in function definition are removed during parsing. If space is a part of function parameter - system macro \$SPACE\$ is to be used*.
+*If space is a part of function parameter - system macro \$SPACE\$ is to be used to specify leading or trailing spaces. Spaces inside a parameter are preserved*.
 
     move
         output
@@ -607,15 +621,15 @@ More examples:
             DQUOTE( A   B     C)
     alert
         $var$
-    # output: "ABC"
+    # output: "A   B     C"
 
     move
         var
         func
-            DQUOTE( A$SPACE$B     C)
+            DQUOTE( $SPACE$A B     C)
     alert
         $var$
-    # output: "A BC"
+    # output: " A B     C"
 
 In this example conditional TAFC/TAFJ script lines are shown:
 
@@ -641,7 +655,7 @@ Output (TAFJ):
 
     C:\temenos\TAFJ
 
-*Pseudo-functions FIND() and FINDSTR() - if successful - return @FM-delimited dynamic array with @FM/@VM/@SM positions of found text; and -1 if insuccessful:*
+*Pseudo-functions FIND() and FINDSTR() - if successful - return @FM-delimited dynamic array with @FM/@VM/@SM positions of found text or -1 if search was insuccessful:*
 
     read
         F.HELPTEXT.MENU
@@ -890,7 +904,7 @@ Change a current COMPANY. Necessary if a commit will be used. If not, data can b
 
 #### debug
 
-Enter the debugger.
+Enter the TAFC/TAFJ debugger.
 
 ## parameters
 
@@ -926,7 +940,7 @@ Enter the debugger.
 
 ## retcodes
 
-Return codes supported by the interprerer:
+Return codes supported by the interpreter:
 
 - 0  success
 - 1  unknown error
