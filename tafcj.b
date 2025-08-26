@@ -9,7 +9,7 @@ PROGRAM tafcj
     $INSERT I_F.OFS.SOURCE
     $INSERT I_F.OFS.REQUEST.DETAIL
 
-    CRT 'tafcj script interpreter v. 0.97'
+    CRT 'tafcj script interpreter v. 0.98'
 
     GOSUB initvars
     GOSUB parseparams
@@ -835,8 +835,12 @@ xecexec:
     IF check_ret_code AND exec_ret_code NE exp_ret_code THEN
         ERROR_message = 'Command at the line {1}: return code "{2}", expected : "{3}"'
         CHANGE '{1}' TO cmd_line_no IN ERROR_message
-        CHANGE '{2}' TO CONVERT(@FM:@VM:@SM, '^]\', exec_ret_code) IN ERROR_message
-        CHANGE '{3}' TO CONVERT(@FM:@VM:@SM, '^]\', exp_ret_code) IN ERROR_message
+        CHANGE '{2}' TO exec_ret_code IN ERROR_message
+        CHANGE '{3}' TO exp_ret_code IN ERROR_message
+        CHANGE @FM TO ' (@FM) ' IN ERROR_message
+        CHANGE @VM TO ' (@VM) ' IN ERROR_message
+        CHANGE @SM TO ' (@SM) ' IN ERROR_message
+        CHANGE @TM TO ' (@TM) ' IN ERROR_message
         EXIT_code = 56
         GOSUB doexit
     END
@@ -844,7 +848,11 @@ xecexec:
     info_msg = '[INFO] Command at the line {1}: return code "{2}"'
     IF check_ret_code THEN info_msg := ' (as expected)'
     CHANGE '{1}' TO cmd_line_no IN info_msg
-    CHANGE '{2}' TO CONVERT(@FM:@VM:@SM, '^]\', exec_ret_code) IN info_msg
+    CHANGE '{2}' TO exec_ret_code IN info_msg
+    CHANGE @FM TO ' (@FM) ' IN info_msg
+    CHANGE @VM TO ' (@VM) ' IN info_msg
+    CHANGE @SM TO ' (@SM) ' IN info_msg
+    CHANGE @TM TO ' (@TM) ' IN info_msg
     INFO_list<-1> = info_msg
 
     RETURN
