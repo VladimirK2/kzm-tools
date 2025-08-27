@@ -9,7 +9,7 @@ PROGRAM tafcj
     $INSERT I_F.OFS.SOURCE
     $INSERT I_F.OFS.REQUEST.DETAIL
 
-    CRT 'tafcj script interpreter v. 0.98'
+    CRT 'tafcj script interpreter v. 0.99'
 
     GOSUB initvars
     GOSUB parseparams
@@ -138,6 +138,7 @@ initvars:
 
     REC_STAT_posn = -1
 
+    SCRIPT_folder = ''
     SCRIPT_file = ''
     SCRIPT_data = ''
     SCRIPT_line = ''
@@ -298,7 +299,20 @@ parseparams:
             END
 
         CASE par_name EQ '-s'
-            SCRIPT_file = FIELD(a_param, ':', 2, 99)
+            script_spec = FIELD(a_param, ':', 2, 99)
+
+            CHANGE '/' TO @FM IN script_spec
+            CHANGE '\' TO @FM IN script_spec
+            slash_qty = COUNT(script_spec, @FM)
+
+            IF slash_qty EQ 0 THEN
+                SCRIPT_folder = '.'
+                SCRIPT_file = script_spec
+            END ELSE
+                SCRIPT_folder = FIELD(script_spec, @FM, 1, slash_qty)
+                SCRIPT_file = script_spec<slash_qty + 1>
+                CHANGE @FM TO DIR_DELIM_CH IN SCRIPT_folder
+            END
 
         CASE par_name EQ '-l'
             T24_login = FIELD(a_param, ':', 2, 99)
@@ -354,22 +368,53 @@ parseparams:
 *----------------------------------------------------------------------------------------------------------------------------------
 readscript:
 
-    OSOPEN SCRIPT_file TO f_in ELSE
+    SCRIPT_data = ''
+*DEBUG
+
+    OPENSEQ SCRIPT_folder, SCRIPT_file TO f_in ELSE
         ERROR_message = 'Script file - open error'
         EXIT_code = 8
         GOSUB doexit
     END
 
-* 2 next lines - keep the numbers the same!  TAFJ can't use a variable in OSBREAD
-    max_data_len = 100000
-    OSBREAD SCRIPT_data FROM f_in AT 0 LENGTH 100000 ON ERROR
-        ret_stat = STATUS()
-        ERROR_message = 'Script file - read error (status = ' : DQUOTE(ret_stat) : ')'
-        EXIT_code = 9
-        GOSUB doexit
-    END
+    LOOP  ;* read all file in one go
 
-    OSCLOSE f_in
+        is_eof = @FALSE
+        cmd_line = ''
+        LOOP
+            READSEQ a_chunk FROM f_in ELSE
+                is_eof = @TRUE
+                BREAK
+            END
+            chunk_len = BYTELEN(a_chunk)
+            cmd_line := a_chunk
+            IF TAFJ_on OR chunk_len LT 1024 THEN BREAK
+        REPEAT
+        IF is_eof AND cmd_line EQ '' THEN BREAK
+
+        SCRIPT_data := cmd_line : CHAR(10)
+
+        IF is_eof THEN BREAK
+    REPEAT
+    CLOSESEQ f_in
+
+*    LOOP
+*
+*        OSBREAD data_chunk FROM f_in AT read_start LENGTH 1000 ON ERROR    ;* TAFJ won't compile with a var - even with EQU
+*            ret_stat = STATUS()
+*
+*            IF ret_stat EQ 28 THEN BREAK   ;* EOF
+*
+*            ERROR_message = 'Script file - read error (status = ' : DQUOTE(ret_stat) : ')'
+*            EXIT_code = 9
+*            GOSUB doexit
+*        END
+*
+*        SCRIPT_data := data_chunk
+*        read_start += data_chunk_len
+*
+*    REPEAT
+*    OSCLOSE f_in
 
     data_len = LEN(SCRIPT_data)
 
@@ -379,11 +424,11 @@ readscript:
         GOSUB doexit
     END
 
-    IF data_len GE max_data_len THEN
-        ERROR_message = 'Script file size exceeds maximum allowed (' : (max_data_len - 1) : ')'
-        EXIT_code = 11
-        GOSUB doexit
-    END
+*    IF data_len GE max_data_len THEN
+*        ERROR_message = 'Script file size exceeds maximum allowed (' : (max_data_len - 1) : ')'
+*        EXIT_code = 11
+*        GOSUB doexit
+*    END
 
     CHANGE CHAR(9) TO '    ' IN SCRIPT_data
     CHANGE CHAR(13) TO '' IN SCRIPT_data
@@ -1627,6 +1672,7 @@ xecoutfile:
 
         out_file_spec = out_file_fldr : DIR_DELIM_CH : out_file_name
         CHANGE '/' TO DIR_DELIM_CH IN out_file_spec
+        CHANGE '\' TO DIR_DELIM_CH IN out_file_spec
         FIND out_file_spec IN OUT_file_names SETTING posn ELSE posn = 0
         IF posn GT 0 THEN
             ERROR_message = 'File {} already used for output'
@@ -1896,8 +1942,8 @@ xecupdate:
 
         GOSUB yfindfield
 
-        IF FLD_name EQ 'LOCAL.REF' THEN
-            ERROR_message = 'Forbidden to specify LOCAL.REF, use local field name'
+        IF FLD_name EQ 'LOCAL.REF' AND NOT(ISDIGIT(vm_no) AND ISDIGIT(sm_no)) THEN
+            ERROR_message = 'LOCAL.REF should have both @VM and @SM specified'
             EXIT_code = 24
             GOSUB doexit
         END
