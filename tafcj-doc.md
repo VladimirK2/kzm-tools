@@ -951,9 +951,9 @@ Return codes supported by the interpreter:
 - 6  Unrecognized parameter
 - 7  Script file not specified
 - 8  Script file - open error
-- 9  Script file - read error
+- 9  **RESERVE**
 - 10 Script file - non-ASCII characters found
-- 11 Script file size exceeds maximum
+- 11 **RESERVE**
 - 12 Error opening SPF
 - 13 Error opening table on read/delete command
 - 14 Error opening F.MNEMONIC.COMPANY
@@ -966,7 +966,7 @@ Return codes supported by the interpreter:
 - 21 Non-numeric exit code
 - 22 Non-zero exit codes less than 1000 are reserved for script interpreter
 - 23 Field not found
-- 24 Forbidden to specify LOCAL.REF, use local field name
+- 24 LOCAL.REF should have both @VM and @SM specified
 - 25 LOCAL.REF not found in DICT
 - 26 @VM number is not numeric
 - 27 @SM number is not numeric
