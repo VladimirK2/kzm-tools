@@ -1,6 +1,6 @@
 PROGRAM rec2tcj
 *--------------------------------------------------------------
-* By V.Kazimirchik, 2024-01-12 18:35
+* By V.Kazimirchik, started 2024-01-12 18:35
 *---------------------------------------------------------------------------------------------------------------------
 
     $INSERT I_COMMON
@@ -24,7 +24,6 @@ PROGRAM rec2tcj
         CRT '---------------------------------------------------------------------------------------------------------'
         CRT 'Options are either:'
         CRT '-x:FIELD1:FIELD2:etc   fields to exclude'
-        CRT '-n         exclude noinput fields, default is to include all fields'
         CRT '-c:        commit mode (INAU / IHLD / RAW)'
         CRT '---------------------------------------------------------------------------------------------------------'
         CRT '... or:'
@@ -41,8 +40,9 @@ PROGRAM rec2tcj
     IF param_one[1, 1] EQ '-' THEN params_are_fixed = @FALSE
     ELSE params_are_fixed = @TRUE
 
-    param_list = @FALSE  ;  excl_noinput = @FALSE  ;  write_to = ''
+    param_list = @FALSE  ;  write_to = ''
     the_file = ''  ;  rec_id = ''  ;  commit_mode = ''  ;  raw_mode = @FALSE
+    last_file = ''
 
     IF params_are_fixed THEN
         the_file = param_one
@@ -77,9 +77,6 @@ PROGRAM rec2tcj
             CASE down_case_par EQ '-c:'
                 commit_mode = FIELD(a_param, ':', 2, 99)
 
-            CASE down_case_par[1, 2] EQ '-n'
-                excl_noinput = @TRUE
-
             CASE down_case_par EQ '-o:'
                 write_to = FIELD(a_param, ':', 2, 99)
 
@@ -98,12 +95,12 @@ PROGRAM rec2tcj
 
     IF NOT(param_list) AND the_file EQ '' THEN
         CRT 'Table is not specified'
-        EXIT(12)
+        EXIT(3)
     END
 
     IF NOT(param_list) AND rec_id EQ '' THEN
         CRT 'Record is not specified'
-        EXIT(13)
+        EXIT(4)
     END
 
 * ---------------------- TT-1657
@@ -111,13 +108,13 @@ PROGRAM rec2tcj
 
     IF commit_mode NE '' AND NOT(commit_mode MATCHES commit_mode_match) THEN
         CRT '-c: parameter can be ' : CHANGE(commit_mode_match, @VM, ' or ')
-        EXIT(78)
+        EXIT(5)
     END
 
     IF raw_mode THEN
-        IF excl_noinput OR commit_mode NE '' THEN
+        IF commit_mode NE '' THEN
             CRT '-raw parameter can be used only with -l: and -o:'
-            EXIT(76)
+            EXIT(6)
         END
     END
 
@@ -130,12 +127,12 @@ PROGRAM rec2tcj
         IF param_list THEN
             GETLIST the_list TO proc_list ELSE
                 CRT 'List not found (' : the_list : ')'
-                EXIT(5)
+                EXIT(7)
             END
         END ELSE
             IF TAFJ_on THEN
                 CRT '"*" not yet supported under TAFJ'
-                EXIT(16)
+                EXIT(8)
             END
             sel_cmd = 'SELECT {} SAVING EVAL "\{}>\:@ID"'
             CHANGE '{}' TO the_file IN sel_cmd
@@ -165,12 +162,19 @@ PROGRAM rec2tcj
 ProcRec:
 * in: the_file, rec_id
 
+    same_file = @TRUE
+    IF the_file NE last_file THEN
+        same_file = @FALSE
+        last_file = the_file
+    END
+
     the_output<-1> = '# ' : the_file : '>' : rec_id
 
-    OPEN the_file TO f_data ELSE CRT 'Data file open error (' : the_file : '), please supply prefix ("F." etc)'  ;  EXIT(6)
+    IF NOT(same_file) THEN
+        OPEN the_file TO f_data ELSE CRT 'Data file open error (' : the_file : '), please supply prefix ("F." etc)'  ;  EXIT(9)
+    END
 
-    READ the_rec FROM f_data, rec_id ELSE CRT 'Read error (' : the_file : '>' : rec_id  : ')'  ;  EXIT(7)
-    CLOSE f_data
+    READ the_rec FROM f_data, rec_id ELSE CRT 'Read error (' : the_file : '>' : rec_id  : ')'  ;  EXIT(10)
 
     IF raw_mode THEN
         the_rec_out = the_rec
@@ -190,33 +194,24 @@ ProcRec:
 
         app_name = FIELD(FIELD(the_file, '.', 2, 99), '$', 1)
 
-        V$FUNCTION = 'TEST'
-* CALL @app_name    ;* 17:25:34 22 Nov 2016, Tue.: this won't work with new template ;
-
         rezt = CALLC JBASESubroutineExist(app_name, sub_info)
         IF TAFJ_on THEN
             IF sub_info NE 'Subroutine' THEN
                 CRT 'Application ' : app_name : ' does not exist'
-                EXIT(75)
+                EXIT(11)
             END
         END ELSE
             IF rezt NE 1 THEN
                 CRT 'Application ' : app_name : ' does not exist'
-                EXIT(75)
+                EXIT(12)
             END
         END
 
-*        CALL EB.EXECUTE.APPLICATION(app_name)         ;* get arrays ;
-
-* get associations
-*        MATBUILD f_array FROM F
-
-*   "RTNLIST" dict_list: 2*SHORT.NAME*^3*NAME.1*^5*STREET*^10*RELATION.CODE*^11*REL.CUSTOMER*^ ...
-*        dict_sel_cmd = 'SELECT DICT {} WITH F1 EQ "D" SAVING EVAL "INT(F2):\*\:@ID:\*\"'
-
-        OPEN 'DICT', the_file TO f_dict ELSE
-            CRT 'Application ' : app_name : ' does not have a DICT'
-            EXIT(81)
+        IF NOT(same_file) THEN
+            OPEN 'DICT', the_file TO f_dict ELSE
+                CRT 'Application ' : app_name : ' does not have a DICT'
+                EXIT(13)
+            END
         END
 
         dict_list = ''
@@ -231,87 +226,6 @@ ProcRec:
                 dict_list<-1> = dict_num : '*' : dict_id : '*'
             END
         REPEAT
-        CLOSE f_dict
-*DEBUG
-
-* ------
-
-*        assoc_list = ''  ;  assoc_cnt = 0  ;  fld_list = ''
-*        fld_qty = DCOUNT(f_array, @FM)
-*
-*        FOR i_fld = 1 TO fld_qty
-*
-*            fld_name = TRIM(f_array<i_fld>, ' ', 'B')
-*
-*            IF fld_name EQ '' THEN
-*                CRT 'F array: field name #' : i_fld : ' is empty'  ;  EXIT(19)
-*            END
-*
-*            CHANGE ' ' TO '.' IN fld_name
-*            CHANGE '/' TO '.' IN fld_name
-*            CHANGE '"' TO '.' IN fld_name
-*            CHANGE '(' TO '.' IN fld_name
-*            CHANGE ')' TO '.' IN fld_name
-*
-*            fld_prefix = fld_name[1,3]
-*
-*            BEGIN CASE
-*                CASE fld_prefix EQ 'XX.'
-*                    assoc_cnt ++
-*                    assoc_list<assoc_cnt> = i_fld
-*
-*                CASE fld_prefix EQ 'XX<'
-*                    assoc_cnt ++
-*                    assoc_list<assoc_cnt> = i_fld
-*
-*                CASE fld_prefix EQ 'XX-'
-*                    assoc_list<assoc_cnt> := @VM : i_fld
-*
-*                CASE fld_prefix EQ 'XX>'
-*                    assoc_list<assoc_cnt> := @VM : i_fld
-*
-*                CASE 1
-*                    assoc_cnt ++
-*                    assoc_list<assoc_cnt> = i_fld
-*
-*            END CASE
-*
-*            LOOP
-*                IF fld_name[1,3] MATCHES 'XX.' :@VM: 'LL.' :@VM: 'XX<' :@VM: 'XX-' :@VM: 'XX>' THEN
-*                    fld_name = fld_name[4,99]
-*                END ELSE
-*                    fld_list<-1> = fld_name
-*                    BREAK
-*                END
-*            REPEAT
-*
-*        NEXT i_fld
-
-* ------------------------------------
-
-*        OPEN 'F.LOCAL.REF.TABLE' TO f_lrt ELSE
-*            CRT 'Unable to open LOCAL.REF.TABLE'
-*            EXIT(14)
-*        END
-*
-*        OPEN 'F.LOCAL.TABLE' TO f_lt ELSE
-*            CRT 'Unable to open LOCAL.TABLE'
-*            EXIT(15)
-*        END
-*
-*        lrt_presents = @TRUE
-*        READ rec_lrt FROM f_lrt, app_name ELSE lrt_presents = @FALSE
-*
-*        lref_list = ''
-*        IF lrt_presents THEN
-*            lrt_list = rec_lrt<EB.LRT.LOCAL.TABLE.NO>
-*            LOOP
-*                REMOVE lt_id FROM lrt_list SETTING status
-*                READ rec_lt FROM f_lt, lt_id ELSE CRT 'ERROR 1', lt_id  ;  EXIT(8)
-*                lref_list<-1> = rec_lt<LocalTable_ShortName>
-*                IF status EQ 0 THEN BREAK
-*            REPEAT
-*        END
 
 * ------------------------------------
 
@@ -324,33 +238,16 @@ ProcRec:
 
         the_qty = DCOUNT(dict_list, @FM)
         FOR i_fld = 1 TO the_qty
-*DEBUG
-
             fld_name = FIELD(dict_list<i_fld>, '*', 2)
             FIND fld_name IN except_list SETTING to_skip ELSE to_skip = ''
             IF to_skip THEN CONTINUE
 
             fld_posn = FIELD(dict_list<i_fld>, '*', 1)
-
-*            IF excl_noinput AND fld_name NE 'LOCAL.REF' THEN
-*                fld_spec = T(i_fld)<3>
-*                IF fld_spec EQ 'NOINPUT' OR fld_spec[6] EQ 'EXTERN' THEN CONTINUE   ;* could be NV.EXTERN ;
-*            END
-
-*            FINDSTR '*' : fld_name : '*' IN dict_list SETTING dict_posn ELSE
-*                CRT 'DICT - field not found: ' : DQUOTE(fld_name)
-*                EXIT(404)
-*            END
-*            phys_loc = FIELD(dict_list<dict_posn>, '*', 1)
-
             fld_cont = the_rec<fld_posn>
 
             mv_posn = 1  ;  sv_posn = 1
             LOOP
                 REMOVE a_chunk FROM fld_cont SETTING mv_sv_stat
-*                FIND i_fld IN assoc_list SETTING fm_posn, vm_posn ELSE CRT 'Structure fatal error'  ;  EXIT(9)
-*                fld_idx = 'I' : FMT(fm_posn, 'R%5') : FMT(mv_posn, 'R%5') : FMT(vm_posn, 'R%5') : FMT(sv_posn, 'R%5')
-
                 rec_output<-1> = fld_name : ':' : mv_posn : ':' : sv_posn : '=' : a_chunk
 
                 BEGIN CASE
@@ -372,7 +269,6 @@ ProcRec:
         rec_output_upd = ''
         rec_output_upd<-1> = 'update'
         FOR i_line = 1 TO lines_qty
-*            rec_output_upd<-1> = '    ' : rec_output<i_line>[22, 999]
             rec_output_upd<-1> = '    ' : rec_output<i_line>
         NEXT i_line
 
@@ -396,7 +292,6 @@ PrintResults:
 
         IF INDEX(write_to, DIR_DELIM_CH, 1) THEN  ;* for "file" in current folder use .\file
             CHANGE @FM TO CHAR(10) IN the_output
-*            OSWRITE the_output TO write_to ON ERROR CRT 'Saving error'  ;  EXIT(1)   ;* not supported in TAFJ
 
             slash_qty = DCOUNT(write_to, DIR_DELIM_CH)
 
@@ -406,10 +301,10 @@ PrintResults:
             OPENSEQ write_to_dir, write_to_file TO f_out THEN
                 WEOFSEQ f_out
             END ELSE
-                CREATE f_out ELSE CRT 'Output file creation error'  ;  EXIT(17)
+                CREATE f_out ELSE CRT 'Output file creation error'  ;  EXIT(14)
             END
 
-            WRITESEQ the_output TO f_out ELSE CRT 'Output file write error'  ;  EXIT(18)
+            WRITESEQ the_output TO f_out ELSE CRT 'Output file write error'  ;  EXIT(15)
             CLOSESEQ f_out
 
             CRT write_to : ' written'
