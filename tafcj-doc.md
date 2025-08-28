@@ -951,7 +951,7 @@ Return codes supported by the interpreter:
 - 6  Unrecognized parameter
 - 7  Script file not specified
 - 8  Script file - open error
-- 9  **RESERVE**
+- 9  T24 credentials are mandatory for this operation
 - 10 Script file - non-ASCII characters found
 - 11 **RESERVE**
 - 12 Error opening SPF
