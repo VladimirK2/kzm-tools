@@ -15,12 +15,12 @@ PROGRAM rec2tcj
     param_one = SENTENCE(1)
 
     IF param_one EQ '' THEN
-        CRT SYSTEM(40) : ' v. 0.991'
+        CRT SYSTEM(40) : ' v. 0.993'
         CRT 'Usage: ' : SYSTEM(40) : ' [-t:]TABLE [-r:]RECORD [options]'
         CRT '---------------------------------------------------------------------------------------------------------'
         CRT 'If table and record are defined with "-t:" and "-r:" prefixes respectively,'
         CRT 'they can be placed anywhere in the command line.'
-        CRT 'RECORD can be set as * to grab the whole table'
+        CRT 'RECORD can be set as ! to grab the whole table'
         CRT '---------------------------------------------------------------------------------------------------------'
         CRT 'Options are either:'
         CRT '-x:FIELD1:FIELD2:etc   fields to exclude'
@@ -30,7 +30,7 @@ PROGRAM rec2tcj
         CRT '-raw       raw mode - can be used for L apps or data files without corresponding application or even DICT'
         CRT '---------------------------------------------------------------------------------------------------------'
         CRT '-l:list    process a saved list in format TABLE>REC'
-        CRT '-o:file    output to &SAVEDLISTS&\file (if folder is not specified), output to screen if not specified'
+        CRT '-o:file    output to &SAVEDLISTS&\file (or to other folder if specified), otherwise output to screen'
         EXIT(1)
     END
 
@@ -121,8 +121,16 @@ PROGRAM rec2tcj
 * ----------------------
 
     the_output = '# start of script'
+    the_output<-1> = 'move'
+    the_output<-1> = '    CHAR_249'
+    the_output<-1> = '    func'
+    the_output<-1> = '        CHAR(249)'
+    the_output<-1> = '    CHAR_250'
+    the_output<-1> = '    func'
+    the_output<-1> = '        CHAR(250)'
+    the_output<-1> = '# ---'
 
-    IF rec_id EQ '*' OR param_list THEN
+    IF rec_id EQ '!' OR param_list THEN
 
         IF param_list THEN
             GETLIST the_list TO proc_list ELSE
@@ -130,21 +138,24 @@ PROGRAM rec2tcj
                 EXIT(7)
             END
         END ELSE
-            IF TAFJ_on THEN
-                CRT '"*" not yet supported under TAFJ'
-                EXIT(8)
-            END
-            sel_cmd = 'SELECT {} SAVING EVAL "\{}>\:@ID"'
-            CHANGE '{}' TO the_file IN sel_cmd
-            EXECUTE sel_cmd CAPTURING out_put RTNLIST proc_list
 
+            proc_list = ''
+            OPEN the_file TO f_data ELSE CRT 'Data file open error (' : the_file : '), please supply prefix ("F." etc)'  ;  EXIT(9)
+
+            SELECT f_data TO sel_data
+            LOOP
+                WHILE READNEXT file_id FROM sel_data DO
+                proc_list<-1> = the_file : '>' : file_id
+            REPEAT
+
+            CLOSE f_data
         END
 
         rec_qty = DCOUNT(proc_list, @FM)
         LOOP
             REMOVE rec_spec FROM proc_list SETTING the_stat_main
             the_file = FIELD(rec_spec, '>', 1)
-            rec_id = FIELD(rec_spec, '>', 2)
+            rec_id = FIELD(rec_spec, '>', 2, 999)
             GOSUB ProcRec
 
             IF the_stat_main EQ 0 THEN BREAK
@@ -245,19 +256,31 @@ ProcRec:
             fld_posn = FIELD(dict_list<i_fld>, '*', 1)
             fld_cont = the_rec<fld_posn>
 
+            CHANGE CHAR(249) TO '$CHAR_249$' IN fld_cont   ;* otherwise REMOVE would be crazy
+            CHANGE CHAR(250) TO '$CHAR_250$' IN fld_cont
+            CHANGE CHAR(251) TO '$TM$' IN fld_cont
+
             mv_posn = 1  ;  sv_posn = 1
             LOOP
                 REMOVE a_chunk FROM fld_cont SETTING mv_sv_stat
-                rec_output<-1> = fld_name : ':' : mv_posn : ':' : sv_posn : '=' : a_chunk
+
+* Keep trailing spaces - script interpreter would TRIM them
+                a_chunk_trimmed = TRIM(a_chunk, ' ', 'T')
+                trail_sp_qty = LEN(a_chunk) - LEN(a_chunk_trimmed)
+                FOR i_space = 1 TO trail_sp_qty
+                    a_chunk_trimmed := '$SPACE$'
+                NEXT i_space
+
+                rec_output<-1> = fld_name : ':' : mv_posn : ':' : sv_posn : '=' : a_chunk_trimmed
 
                 BEGIN CASE
-                    CASE mv_sv_stat EQ 0
-                        BREAK
-                    CASE mv_sv_stat EQ 3
-                        mv_posn ++
-                        sv_posn = 1
-                    CASE mv_sv_stat EQ 4
-                        sv_posn ++
+                CASE mv_sv_stat EQ 0
+                    BREAK
+                CASE mv_sv_stat EQ 3
+                    mv_posn ++
+                    sv_posn = 1
+                CASE mv_sv_stat EQ 4
+                    sv_posn ++
 
                 END CASE
             REPEAT
