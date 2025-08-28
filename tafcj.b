@@ -9,7 +9,7 @@ PROGRAM tafcj
     $INSERT I_F.OFS.SOURCE
     $INSERT I_F.OFS.REQUEST.DETAIL
 
-    CRT 'tafcj script interpreter v. 0.99'
+    CRT 'tafcj script interpreter v. 0.993'
 
     GOSUB initvars
     GOSUB parseparams
@@ -97,61 +97,10 @@ initvars:
 
     AUDT_trail = ''
 
+    CLEAR_mode = @FALSE
     CMD_line = ''
     CMD_line_no = 0
-
     COMMIT_options = 'INAU' :@FM: 'IHLD' :@FM: 'RAW'
-    DIM DICT_list(1)                        ;* will expand dynamically
-    MAT DICT_list = ''
-    DIM DICT_list_lref(1)                     ;* will expand dynamically
-    MAT DICT_list_lref = ''
-    ERROR_message = 'Unknown error'
-    EXIT_code = 1
-
-    DIM FILE_handle_list(1)                     ;* will expand dynamically
-    MAT FILE_handle_list = ''
-    FILE_fname_list = 'F.SPF'
-    FILE_no_curr = 1
-
-    FIRST_space = @FALSE   ;* if we had leading space(s) in script line before trimming
-
-    FLD_name = ''  ;  FLD_posn = ''  ;  IS_lref = @FALSE  ;   LREF_posn = 0  ;   LOCREF_posn = 0
-
-    INFO_list = ''
-    is_EOF = @FALSE
-
-    LBL_list = ''  ;  LBL_posn_list = ''  ;  LBL_togo = ''
-
-    OFS_msg = ''  ;  FAIL_on_err = @FALSE  ;  DEL_on_err = @FALSE
-    OFS_commit_ok = @FALSE  ;  OFS_output = ''
-
-    OUT_file_names = ''
-    DIM OUT_file_handles(1)
-    MAT OUT_file_handles = ''
-
-    DUP_dir = ''  ;  DUP_file = ''   ; f_DUP_file = ''
-
-    RECORD_curr = ''
-    RECORD_curr_init = ''
-    RECORD_id_curr = ''
-    RECORD_is_new = @FALSE
-
-    REC_STAT_posn = -1
-
-    SCRIPT_folder = ''
-    SCRIPT_file = ''
-    SCRIPT_data = ''
-    SCRIPT_line = ''
-    SCRIPT_line_no = 0
-    SCRIPT_size = 0
-
-    DIM SELECT_list(1)     ;* will expand dynamically in getlist
-    MAT SELECT_list = ''
-    SELECT_name_list = 'DUMMY'
-
-    START_time = TIMESTAMP()
-    T24_login = ''   ;  T24_passwd = '' ;  T24_userid = ''
-    WARN_list = ''
 
     OPEN 'F.MNEMONIC.COMPANY' TO f_mnem_cmp ELSE
         ERROR_message = 'Error opening F.MNEMONIC.COMPANY'
@@ -164,8 +113,28 @@ initvars:
         EXIT_code = 15
         GOSUB doexit
     END
-
     CLOSE f_mnem_cmp
+
+    DIM DICT_list(1)                        ;* will expand dynamically
+    MAT DICT_list = ''
+    DIM DICT_list_lref(1)                     ;* will expand dynamically
+    MAT DICT_list_lref = ''
+    DUP_dir = ''  ;  DUP_file = ''   ; f_DUP_file = ''
+
+    ERROR_message = 'Unknown error'
+    EXIT_code = 1
+
+    DIM FILE_handle_list(1)                     ;* will expand dynamically
+    MAT FILE_handle_list = ''
+    FILE_fname_list = 'F.SPF'
+    FILE_no_curr = 1
+    FIRST_space = @FALSE   ;* if we had leading space(s) in script line before trimming
+    FLD_name = ''  ;  FLD_posn = ''  ;  IS_lref = @FALSE  ;   LREF_posn = 0  ;   LOCREF_posn = 0
+
+    INFO_list = ''
+    is_EOF = @FALSE
+
+    LBL_list = ''  ;  LBL_posn_list = ''  ;  LBL_togo = ''
 
     MACRO_name_list = 'TODAY' :@FM: 'LCCY' :@FM: 'ID.COMPANY' :@FM: 'FM' :@FM: 'VM' :@FM: 'SM' :@FM: 'TM' :@FM: 'SPACE' :@FM: 'BLANK' :@FM: 'RECORD'
     MACRO_name_list := @FM: 'EXECSCREEN' :@FM: 'EXECRETCODE' :@FM: 'EXECRETDATA' :@FM: 'EXECRETLIST' :@FM: 'LF' :@FM: 'TAB' :@FM: 'DIR_DELIM_CH'
@@ -190,6 +159,34 @@ initvars:
     MACRO_list(19) = '('
     MACRO_list(20) = ')'
     MACRO_list(27) = -1    ;*  avoid accidental usage before read command
+
+    OFS_msg = ''  ;  FAIL_on_err = @FALSE  ;  DEL_on_err = @FALSE
+    OFS_commit_ok = @FALSE  ;  OFS_output = ''
+    OUT_file_names = ''
+    DIM OUT_file_handles(1)
+    MAT OUT_file_handles = ''
+    OVERRIDE_posn = -1
+
+    RECORD_curr = ''
+    RECORD_curr_init = ''
+    RECORD_id_curr = ''
+    RECORD_is_new = @FALSE
+    REC_STAT_posn = -1
+
+    SCRIPT_folder = ''
+    SCRIPT_file = ''
+    SCRIPT_data = ''
+    SCRIPT_line = ''
+    SCRIPT_line_no = 0
+    SCRIPT_size = 0
+    DIM SELECT_list(1)     ;* will expand dynamically in getlist
+    MAT SELECT_list = ''
+    SELECT_name_list = 'DUMMY'
+    START_time = TIMESTAMP()
+
+    T24_login = ''   ;  T24_passwd = '' ;  T24_userid = ''
+
+    WARN_list = ''
 
     GOSUB yloadcompany
 
@@ -369,7 +366,6 @@ parseparams:
 readscript:
 
     SCRIPT_data = ''
-*DEBUG
 
     OPENSEQ SCRIPT_folder, SCRIPT_file TO f_in ELSE
         ERROR_message = 'Script file - open error'
@@ -398,24 +394,6 @@ readscript:
     REPEAT
     CLOSESEQ f_in
 
-*    LOOP
-*
-*        OSBREAD data_chunk FROM f_in AT read_start LENGTH 1000 ON ERROR    ;* TAFJ won't compile with a var - even with EQU
-*            ret_stat = STATUS()
-*
-*            IF ret_stat EQ 28 THEN BREAK   ;* EOF
-*
-*            ERROR_message = 'Script file - read error (status = ' : DQUOTE(ret_stat) : ')'
-*            EXIT_code = 9
-*            GOSUB doexit
-*        END
-*
-*        SCRIPT_data := data_chunk
-*        read_start += data_chunk_len
-*
-*    REPEAT
-*    OSCLOSE f_in
-
     data_len = LEN(SCRIPT_data)
 
     IF data_len NE BYTELEN(SCRIPT_data) THEN
@@ -423,12 +401,6 @@ readscript:
         EXIT_code = 10
         GOSUB doexit
     END
-
-*    IF data_len GE max_data_len THEN
-*        ERROR_message = 'Script file size exceeds maximum allowed (' : (max_data_len - 1) : ')'
-*        EXIT_code = 11
-*        GOSUB doexit
-*    END
 
     CHANGE CHAR(9) TO '    ' IN SCRIPT_data
     CHANGE CHAR(13) TO '' IN SCRIPT_data
@@ -457,7 +429,7 @@ readscript:
 *----------------------------------------------------------------------------------------------------------------------------------
 preexit:
 
-    IF RECORD_curr_init NE RECORD_curr THEN
+    IF ( RECORD_curr_init NE RECORD_curr ) AND ( TRIM(RECORD_curr, @FM, 'T') NE TRIM(RECORD_curr_init, @FM, 'T') ) THEN
         ERROR_message = 'Changes not saved - {1}>{2}'
         CHANGE '{1}' TO FILE_fname_list<FILE_no_curr> IN ERROR_message
         CHANGE '{2}' TO RECORD_id_curr IN ERROR_message
@@ -553,11 +525,13 @@ xecalert:
 *----------------------------------------------------------------------------------------------------------------------------------
 xecclear:
 
-    IF RECORD_curr EQ '' THEN
+    IF RECORD_id_curr EQ '' THEN
         ERROR_message = 'No "read" command was executed yet'
         EXIT_code = 44
         GOSUB doexit
     END
+
+    CLEAR_mode = @TRUE  ;* don't update empty fields at this mode - can accidentally "extend" the record if an empty field is located after audit trail and then "live record not changed" will never be triggered
 
     GOSUB yaudtsave
     RECORD_curr = ''
@@ -568,7 +542,7 @@ xecclear:
 *----------------------------------------------------------------------------------------------------------------------------------
 xecclone:
 
-    IF RECORD_curr EQ '' THEN
+    IF RECORD_id_curr EQ '' THEN
         ERROR_message = 'No "read" command was executed yet'
         EXIT_code = 44
         GOSUB doexit
@@ -606,6 +580,8 @@ xecclone:
         GOSUB doexit
     END
 
+    IF OVERRIDE_posn THEN RECORD_curr<OVERRIDE_posn> = ''
+
     GOSUB yaudtload
 
     RETURN
@@ -619,7 +595,10 @@ xeccommit:
         GOSUB doexit
     END
 
-    IF NOT(RECORD_is_new) AND RECORD_curr = RECORD_curr_init THEN
+*  RECORD_curr               : Commitments^LD.LOANS.AND.DEPOSITS^LD.SHRT^^40004^^^^^^^^^^^^^^2^24_S.DONEY2]1_DL.RESTORE^9802171914^13_S.DONEY^LU0010001^1
+*  RECORD_curr_init          : Commitments^LD.LOANS.AND.DEPOSITS^LD.SHRT^^40004^^^^^^^^^^^^^^2^24_S.DONEY2]1_DL.RESTORE^9802171914^13_S.DONEY^LU0010001^1^^
+
+    IF NOT(RECORD_is_new) AND (RECORD_curr EQ RECORD_curr_init OR TRIM(RECORD_curr, @FM, 'T') EQ TRIM(RECORD_curr_init, @FM, 'T') ) THEN
         WARN_list<-1> = '[WARN] LIVE record not changed (' : FILE_fname_list<FILE_no_curr> : '>' : RECORD_id_curr : ')'
 
         LOOP
@@ -905,7 +884,7 @@ xecexec:
 *----------------------------------------------------------------------------------------------------------------------------------
 xecexit:
 
-    IF RECORD_curr_init NE RECORD_curr THEN
+    IF ( RECORD_curr_init NE RECORD_curr ) AND ( TRIM(RECORD_curr, @FM, 'T') NE TRIM(RECORD_curr_init, @FM, 'T') ) THEN
         ERROR_message = 'Changes not saved - {1}>{2}'
         CHANGE '{1}' TO FILE_fname_list<FILE_no_curr> IN ERROR_message
         CHANGE '{2}' TO RECORD_id_curr IN ERROR_message
@@ -1715,13 +1694,15 @@ xecprecision:
 *----------------------------------------------------------------------------------------------------------------------------------
 xecread:
 
-    IF RECORD_curr_init NE RECORD_curr THEN
+    IF ( RECORD_curr_init NE RECORD_curr ) AND ( TRIM(RECORD_curr, @FM, 'T') NE TRIM(RECORD_curr_init, @FM, 'T') ) THEN
         ERROR_message = 'Changes not saved - {1}>{2}'
         CHANGE '{1}' TO FILE_fname_list<FILE_no_curr> IN ERROR_message
         CHANGE '{2}' TO RECORD_id_curr IN ERROR_message
         EXIT_code = 16
         GOSUB doexit
     END
+
+    CLEAR_mode = @FALSE
 
     GOSUB ygetnextline
     GOSUB ycheckcmdsyntax
@@ -1766,8 +1747,9 @@ xecread:
             RECORD_curr<REC_STAT_posn + 5> = COMPANY_curr  ;*  CO.CODE
             RECORD_curr<REC_STAT_posn + 6> = 1  ;* DEPT.CODE
         END
-
     END
+
+    IF OVERRIDE_posn THEN RECORD_curr<OVERRIDE_posn> = ''  ;* we won't have OVERRIDEs on amended record in case of "clear" so comparison would fail to see non-changed record
 
     RECORD_curr_init = RECORD_curr   ;* for comparison before commit
     MACRO_list(10) = RECORD_curr   ;* can be addressed as $RECORD$
@@ -1922,6 +1904,11 @@ xecupdate:
         sm_no = FIELD(the_rest, '=', 1)
         new_data = FIELD(the_rest, '=', 2, 999999)
 
+        IF CLEAR_mode AND vm_no EQ 1 AND sm_no EQ 1 AND new_data EQ '' THEN
+            updt_qty ++
+            CONTINUE
+        END
+
         IF vm_no NE '' AND vm_no NE -1 AND NOT(ISDIGIT(vm_no)) THEN
             ERROR_message = '@VM number is not numeric'
             EXIT_code = 26
@@ -2032,7 +2019,7 @@ ygetdict:
 * in: FILE_fname_list<FILE_no_curr>
 * out: DICT_list(FILE_no_curr)
 * out: DICT_list_lref(FILE_no_curr)
-* out: REC_STAT_posn
+* out: REC_STAT_posn, OVERRIDE_posn
 
     dict_sel_list = ''    ;   dict_sel_list_lref = ''
 
@@ -2072,6 +2059,7 @@ ygetdict:
     END
 
     FIND 'RECORD.STATUS' IN dict_sel_list SETTING REC_STAT_posn ELSE REC_STAT_posn = 0
+    FIND 'OVERRIDE' IN dict_sel_list SETTING OVERRIDE_posn ELSE OVERRIDE_posn = 0
 
     DICT_list(FILE_no_curr) = dict_sel_list
     DICT_list_lref(FILE_no_curr) = dict_sel_list_lref
@@ -2240,6 +2228,16 @@ ylaunchofs:
 
         ERROR_message = 'OFS.SOURCE is mandatory for this operation'
         EXIT_code = 40
+        GOSUB doexit
+    END
+
+    IF T24_login EQ '' THEN
+        IF DEL_on_err THEN
+            DELETE f_nau, RECORD_id_curr ON ERROR NULL
+        END
+
+        ERROR_message = 'T24 credentials are mandatory for this operation'
+        EXIT_code = 9
         GOSUB doexit
     END
 
