@@ -15,7 +15,7 @@ PROGRAM rec2tcj
     param_one = SENTENCE(1)
 
     IF param_one EQ '' THEN
-        CRT SYSTEM(40) : ' v. 0.993'
+        CRT SYSTEM(40) : ' v. 0.994'
         CRT 'Usage: ' : SYSTEM(40) : ' [-t:]TABLE [-r:]RECORD [options]'
         CRT '---------------------------------------------------------------------------------------------------------'
         CRT 'If table and record are defined with "-t:" and "-r:" prefixes respectively,'
@@ -120,15 +120,9 @@ PROGRAM rec2tcj
 
 * ----------------------
 
-    the_output = '# start of script'
-    the_output<-1> = 'move'
-    the_output<-1> = '    CHAR_249'
-    the_output<-1> = '    func'
-    the_output<-1> = '        CHAR(249)'
-    the_output<-1> = '    CHAR_250'
-    the_output<-1> = '    func'
-    the_output<-1> = '        CHAR(250)'
-    the_output<-1> = '# ---'
+    the_output_HDR = '# start of script'
+    ext_chars = ''
+    the_output = ''
 
     IF rec_id EQ '!' OR param_list THEN
 
@@ -166,6 +160,10 @@ PROGRAM rec2tcj
     END
 
     the_output<-1> = '# end of script'
+    the_output_HDR<-1> = '# ---------------------'
+    the_output_HDR<-1> = the_output
+    the_output = the_output_HDR
+
     GOSUB PrintResults
 
     EXIT(0)
@@ -193,6 +191,21 @@ ProcRec:
         CHANGE @VM TO '$VM$' IN the_rec_out
         CHANGE @SM TO '$SM$' IN the_rec_out
         CHANGE @TM TO '$TM$' IN the_rec_out
+
+        FOR i_ch = 127 TO 250
+            IF INDEX(the_rec_out, CHAR(i_ch), 1) THEN
+                CHANGE CHAR(i_ch) TO '$CHAR_' : i_ch : '$' IN the_rec_out
+
+                FIND i_ch IN ext_chars SETTING dummy ELSE
+                    the_output_HDR<-1> = 'move'
+                    the_output_HDR<-1> = '    CHAR_' : i_ch
+                    the_output_HDR<-1> = '    func'
+                    the_output_HDR<-1> = '        CHAR(' : i_ch : ')'
+                    ext_chars<-1> = i_ch
+                END
+            END
+        NEXT i_ch
+
         the_output<-1> = 'read'
         the_output<-1> = '    ' : the_file
         the_output<-1> = '    ' : rec_id
@@ -256,9 +269,19 @@ ProcRec:
             fld_posn = FIELD(dict_list<i_fld>, '*', 1)
             fld_cont = the_rec<fld_posn>
 
-            CHANGE CHAR(249) TO '$CHAR_249$' IN fld_cont   ;* otherwise REMOVE would be crazy
-            CHANGE CHAR(250) TO '$CHAR_250$' IN fld_cont
-            CHANGE CHAR(251) TO '$TM$' IN fld_cont
+            FOR i_ch = 127 TO 251
+                IF INDEX(fld_cont, CHAR(i_ch), 1) THEN
+                    CHANGE CHAR(i_ch) TO '$CHAR_' : i_ch : '$' IN fld_cont
+
+                    FIND i_ch IN ext_chars SETTING dummy ELSE
+                        the_output_HDR<-1> = 'move'
+                        the_output_HDR<-1> = '    CHAR_' : i_ch
+                        the_output_HDR<-1> = '    func'
+                        the_output_HDR<-1> = '        CHAR(' : i_ch : ')'
+                        ext_chars<-1> = i_ch
+                    END
+                END
+            NEXT i_ch
 
             mv_posn = 1  ;  sv_posn = 1
             LOOP
