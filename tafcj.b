@@ -9,7 +9,7 @@ PROGRAM tafcj
     $INSERT I_F.OFS.SOURCE
     $INSERT I_F.OFS.REQUEST.DETAIL
 
-    CRT 'tafcj script interpreter v. 0.993'
+    CRT 'tafcj script interpreter v. 0.994'
 
     GOSUB initvars
     GOSUB parseparams
@@ -397,6 +397,40 @@ readscript:
     data_len = LEN(SCRIPT_data)
 
     IF data_len NE BYTELEN(SCRIPT_data) THEN
+
+        IF TAFJ_on THEN CRT 'Non-ASCII character(s) found, searching position(s)...'
+        ELSE CRT 'Non-ASCII character(s) found, searching position(s)... (Press any key to cancel)'
+
+        buf_size = 10000   ;   line_no = 1
+
+        FOR i = 1 TO data_len
+            IF SYSTEM(14) GT 0 THEN BREAK
+            IF MOD(i, 100000) EQ '1' THEN CRT '.' :
+
+            a_buff = SCRIPT_data[i, buf_size]
+            IF LEN(a_buff) EQ BYTELEN(a_buff) THEN
+                i += buf_size - 1
+                line_no += COUNT(a_buff, CHAR(10))
+                CONTINUE
+            END
+
+            CRT ''
+            FOR j = 1 TO buf_size
+                a_char = a_buff[j, 1]
+                char_num = SEQ(a_char)
+                IF char_num EQ 0 THEN BREAK  ;* we are beyond the buffer
+                IF SYSTEM(14) GT 0 THEN BREAK
+                IF char_num EQ 10 THEN line_no ++
+                ELSE
+                    IF BYTELEN(a_char) NE 1 THEN
+                        CRT 'Found CHAR(' : char_num : ') / ' : FMT(a_char, 'MX') : ' at position ' : i+j : ' (line ' : line_no : ')'
+                    END
+                END
+            NEXT j
+            i += buf_size - 1
+        NEXT i
+        CRT ''
+
         ERROR_message = 'Script file - only ASCII characters allowed'
         EXIT_code = 10
         GOSUB doexit
