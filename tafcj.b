@@ -9,7 +9,7 @@ PROGRAM tafcj
     $INSERT I_F.OFS.SOURCE
     $INSERT I_F.OFS.REQUEST.DETAIL
 
-    CRT 'tafcj script interpreter v. 0.994'
+    CRT 'tafcj script interpreter v. 0.998'
 
     GOSUB initvars
     GOSUB parseparams
@@ -140,7 +140,7 @@ initvars:
     MACRO_name_list := @FM: 'EXECSCREEN' :@FM: 'EXECRETCODE' :@FM: 'EXECRETDATA' :@FM: 'EXECRETLIST' :@FM: 'LF' :@FM: 'TAB' :@FM: 'DIR_DELIM_CH'
     MACRO_name_list := @FM: 'COMMA' :@FM: 'LPARENTH' :@FM: 'RPARENTH' :@FM: 'USERNAME' :@FM: 'PASSWORD' :@FM: 'OFSCOMMIT' :@FM: 'OFSOUTPUT'
 * 25th - ...
-    MACRO_name_list := @FM: 'DICT' :@FM: 'LREF' :@FM: 'NEWRECORD'
+    MACRO_name_list := @FM: 'DICT' :@FM: 'LREF' :@FM: 'NEWRECORD' :@FM: 'NUMSEL'
 
     DIM MACRO_list(DCOUNT(MACRO_name_list, @FM))     ;* will expand dynamically
     MAT MACRO_list = ''
@@ -373,6 +373,8 @@ readscript:
         GOSUB doexit
     END
 
+    CRT 'Reading script...'
+
     LOOP  ;* read all file in one go
 
         is_eof = @FALSE
@@ -398,8 +400,8 @@ readscript:
 
     IF data_len NE BYTELEN(SCRIPT_data) THEN
 
-        IF TAFJ_on THEN CRT 'Non-ASCII character(s) found, searching position(s)...'
-        ELSE CRT 'Non-ASCII character(s) found, searching position(s)... (Press any key to cancel)'
+        IF TAFJ_on THEN CRT 'Non-printable character(s) found, searching position(s)...'
+        ELSE CRT 'Non-printable character(s) found, searching position(s)... (Press any key to cancel)'
 
         buf_size = 10000   ;   line_no = 1
 
@@ -422,8 +424,8 @@ readscript:
                 IF SYSTEM(14) GT 0 THEN BREAK
                 IF char_num EQ 10 THEN line_no ++
                 ELSE
-                    IF BYTELEN(a_char) NE 1 THEN
-                        CRT 'Found CHAR(' : char_num : ') / ' : FMT(a_char, 'MX') : ' at position ' : i+j : ' (line ' : line_no : ')'
+                    IF LEN(a_char) NE BYTELEN(a_char) THEN
+                        CRT 'Position ' : i+j : ' (line ' : line_no : '): SEQ(char) = ' : char_num : ', FMT(char, "MX") = ' : FMT(a_char, 'MX')
                     END
                 END
             NEXT j
@@ -431,7 +433,7 @@ readscript:
         NEXT i
         CRT ''
 
-        ERROR_message = 'Script file - only ASCII characters allowed'
+        ERROR_message = 'Script file - only printable characters allowed'
         EXIT_code = 10
         GOSUB doexit
     END
@@ -440,6 +442,8 @@ readscript:
     CHANGE CHAR(13) TO '' IN SCRIPT_data
     CHANGE CHAR(10) TO @FM IN SCRIPT_data
     SCRIPT_size = DCOUNT(SCRIPT_data, @FM)
+
+    CRT 'Parsing script...'
 
     FOR i = 1 TO SCRIPT_size
         a_line = TRIM(SCRIPT_data<i>, ' ', 'T')
@@ -457,6 +461,8 @@ readscript:
             LBL_posn_list<-1> = i
         END
     NEXT i
+
+    CRT 'Proceeding ...'
 
     RETURN
 
@@ -799,7 +805,11 @@ xeccommit:
         ofs_rec_id = RECORD_id_curr
         special_chars = '",/' ; replace_chars = "|?^" ; CONVERT special_chars TO replace_chars IN ofs_rec_id
 
-        CHANGE '{7}' TO ofs_rec_id IN OFS_msg
+        IF LEN(ofs_rec_id) EQ 1 AND ISALPHA(ofs_rec_id) THEN                      ;* e.g. F.INTEREST.BASIS
+            CHANGE '{7}' TO ofs_rec_id : '.' IN OFS_msg
+        END ELSE
+            CHANGE '{7}' TO ofs_rec_id IN OFS_msg
+        END
 
         DEL_on_err = @TRUE
         FAIL_on_err = @TRUE
@@ -964,11 +974,13 @@ xecgetlist:
         posn = sel_qty
     END
 
-    GETLIST sel_list_name TO SELECT_list(posn) ELSE
+    GETLIST sel_list_name TO SELECT_list(posn) SETTING num_sel ELSE
         ERROR_message = 'SELECT list does not exist'
         EXIT_code = 42
         GOSUB doexit
     END
+
+    MACRO_list(28) = num_sel
 
     RETURN
 
@@ -2182,6 +2194,7 @@ ygetnextline:
 
     LOOP
         SCRIPT_line_no ++
+        IF MOD(SCRIPT_line_no, 100000) EQ 0 THEN CRT '.'
         IF SCRIPT_line_no GT SCRIPT_size THEN
             is_EOF = @TRUE
             SCRIPT_line = ''
