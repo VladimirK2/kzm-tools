@@ -14,8 +14,8 @@ PROGRAM rec2tcj
 
     param_one = SENTENCE(1)
 
+    CRT SYSTEM(40) : ' v. 0.998'
     IF param_one EQ '' THEN
-        CRT SYSTEM(40) : ' v. 0.994'
         CRT 'Usage: ' : SYSTEM(40) : ' [-t:]TABLE [-r:]RECORD [options]'
         CRT '---------------------------------------------------------------------------------------------------------'
         CRT 'If table and record are defined with "-t:" and "-r:" prefixes respectively,'
@@ -127,25 +127,28 @@ PROGRAM rec2tcj
     IF rec_id EQ '!' OR param_list THEN
 
         IF param_list THEN
-            GETLIST the_list TO proc_list ELSE
+            GETLIST the_list TO proc_list SETTING num_sel ELSE
                 CRT 'List not found (' : the_list : ')'
                 EXIT(7)
             END
         END ELSE
 
-            proc_list = ''
+            proc_list = ''     ;   num_sel = 0
             OPEN the_file TO f_data ELSE CRT 'Data file open error (' : the_file : '), please supply prefix ("F." etc)'  ;  EXIT(9)
 
             SELECT f_data TO sel_data
             LOOP
                 WHILE READNEXT file_id FROM sel_data DO
                 proc_list<-1> = the_file : '>' : file_id
+                num_sel ++
             REPEAT
 
             CLOSE f_data
         END
 
-        rec_qty = DCOUNT(proc_list, @FM)
+*        rec_qty = DCOUNT(proc_list, @FM)
+        CRT 'Records to proceed: ' : num_sel
+
         LOOP
             REMOVE rec_spec FROM proc_list SETTING the_stat_main
             the_file = FIELD(rec_spec, '>', 1)
@@ -191,6 +194,7 @@ ProcRec:
         CHANGE @VM TO '$VM$' IN the_rec_out
         CHANGE @SM TO '$SM$' IN the_rec_out
         CHANGE @TM TO '$TM$' IN the_rec_out
+        CHANGE CHAR(9) TO '$TAB$' IN the_rec_out
 
         FOR i_ch = 127 TO 250
             IF INDEX(the_rec_out, CHAR(i_ch), 1) THEN
@@ -260,6 +264,8 @@ ProcRec:
 
         rec_output = ''
 
+        CHANGE CHAR(9) TO '$TAB$' IN the_rec
+
         the_qty = DCOUNT(dict_list, @FM)
         FOR i_fld = 1 TO the_qty
             fld_name = FIELD(dict_list<i_fld>, '*', 2)
@@ -267,6 +273,13 @@ ProcRec:
             IF to_skip THEN CONTINUE
 
             fld_posn = FIELD(dict_list<i_fld>, '*', 1)
+
+            IF fld_name[1, 2] EQ 'K.' THEN
+                to_find = fld_posn : '*' : fld_name[3, 99] : '*'
+                FIND to_find IN dict_list SETTING it_is_k_dot ELSE it_is_k_dot = 0
+                IF it_is_k_dot THEN CONTINUE
+            END
+
             fld_cont = the_rec<fld_posn>
 
             FOR i_ch = 127 TO 251
