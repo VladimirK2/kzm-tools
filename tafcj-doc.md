@@ -1,4 +1,4 @@
-# TAFCJ script
+    # TAFCJ script
 
 By V.Kazimirchik.
 
@@ -28,6 +28,8 @@ This command will run a script qwerty.tcj in bnk.run. If a script from other fol
 
     tafcj PW.MODEL -s:..\qwerty.tcj
     tafcj PW.MODEL -s:../qwerty.tcj
+
+PW.MODEL is a recommended OFS.SOURCE to use. Note: it skips field validations; should they be necessary - OFS.SOURCE record with FIELD.VAL = YES is to be used (TELNET type only).
 
 "Minus" (-) can be used instead of OFS.SOURCE ID if there's no need to amend data (e.g.for reports).
 
@@ -927,7 +929,9 @@ Enter the TAFC/TAFJ debugger.
     -------------------------------------------------------------
     -l:<login>        | T24 login
     -------------------------------------------------------------
-    -p:<password>     | T24 password
+    -p:<password>     | T24 password. If T24 login is set and
+                      | password is not - it will be prompted to
+                      | be input manually
     -------------------------------------------------------------
     -var              | free-format parameter to supply a
                       | register value, e.g.:
@@ -952,7 +956,7 @@ Return codes supported by the interpreter:
 - 7  Script file not specified
 - 8  Script file - open error
 - 9  T24 credentials are mandatory for this operation
-- 10 Script file - non-ASCII characters found
+- 10 Script file - non-printable characters found
 - 11 **RESERVE**
 - 12 Error opening SPF
 - 13 Error opening table on read/delete command
@@ -1008,30 +1012,31 @@ Return codes supported by the interpreter:
 
 ## stdmacros
 
-- \$TODAY\$
-- \$LCCY\$
-- \$ID.COMPANY\$
-- \$FM\$
-- \$VM\$
-- \$SM\$
-- \$TM\$
-- \$SPACE\$
 - \$BLANK\$
-- \$RECORD\$
-- \$EXECSCREEN\$
-- \$EXECRETCODE\$
-- \$EXECRETDATA\$
-- \$EXECRETLIST\$
-- \$LF\$
-- \$TAB\$
-- \$DIR\_DELIM\_CH\$
 - \$COMMA\$
-- \$LPARENTH\$
-- \$RPARENTH\$
-- \$USERNAME\$
-- \$PASSWORD\$
-- \$OFSCOMMIT\$
-- \$OFSOUTPUT\$
 - \$DICT\$
+- \$DIR\_DELIM\_CH\$
+- \$EXECRETCODE\$
+- \$EXECRETLIST\$
+- \$EXECRETDATA\$
+- \$EXECSCREEN\$
+- \$FM\$
+- \$ID.COMPANY\$
+- \$LCCY\$
+- \$LF\$
+- \$LPARENTH\$
 - \$LREF\$
 - \$NEWRECORD\$
+- \$NUMSEL\$ - number of records in the list after getlist command
+- \$OFSCOMMIT\$
+- \$OFSOUTPUT\$
+- \$PASSWORD\$
+- \$RECORD\$
+- \$RPARENTH\$
+- \$SM\$ - subvalue mark
+- \$SPACE\$
+- \$TAB\$
+- \$TM\$
+- \$TODAY\$
+- \$USERNAME\$
+- \$VM\$ value mark
