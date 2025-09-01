@@ -9,7 +9,7 @@ PROGRAM tafcj
     $INSERT I_F.OFS.SOURCE
     $INSERT I_F.OFS.REQUEST.DETAIL
 
-    CRT 'tafcj script interpreter v. 0.998'
+    CRT 'tafcj script interpreter v. 0.999'
 
     GOSUB initvars
     GOSUB parseparams
@@ -1347,6 +1347,7 @@ xecmove:
 
             CASE func_name EQ 'GETENV'
                 IF GETENV(args_list(1), MACRO_value) THEN NULL
+                ELSE MACRO_value = ''
 
             CASE func_name EQ 'GT'
                 MACRO_value = (args_list(1) GT args_list(2))
