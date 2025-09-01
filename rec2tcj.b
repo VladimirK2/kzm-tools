@@ -14,7 +14,7 @@ PROGRAM rec2tcj
 
     param_one = SENTENCE(1)
 
-    CRT SYSTEM(40) : ' v. 0.998'
+    CRT SYSTEM(40) : ' v. 0.999'
     IF param_one EQ '' THEN
         CRT 'Usage: ' : SYSTEM(40) : ' [-t:]TABLE [-r:]RECORD [options]'
         CRT '---------------------------------------------------------------------------------------------------------'
@@ -148,6 +148,7 @@ PROGRAM rec2tcj
 
 *        rec_qty = DCOUNT(proc_list, @FM)
         CRT 'Records to proceed: ' : num_sel
+        IF num_sel EQ 0 THEN EXIT(0)
 
         LOOP
             REMOVE rec_spec FROM proc_list SETTING the_stat_main
