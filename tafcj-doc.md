@@ -201,7 +201,7 @@ Output:
     [INFO] Command at the line 2: return code "805]1]COPY_DONE" (as expected)
     [INFO] Finished successfully
 
-System macros \$EXECSCREEN\$, \$EXECRETCODE\$, \$EXECRETDATA\$ and \$EXECRETLIST\$ are available after exec command:
+System macros \$EXECSCREEN\$, \$EXECRETCODE\$, \$EXECRETDATA\$ and \$EXECRETLIST\$ are available after "exec" command:
 
     exec
         COPY FROM F.SPF TO F.TEST ALL OVERWRITING
@@ -229,7 +229,7 @@ Read a record into record buffer. Examples:
 
 A non-existing record can be specified for further population and saving.
 
-After read command system macros \$RECORD\$, \$DICT\$ and \$LREF\$ are available:
+After "read" command system macros \$RECORD\$, \$DICT\$ and \$LREF\$ are available:
 
     read
         F.ABBREVIATION
@@ -959,7 +959,7 @@ Return codes supported by the interpreter:
 - 10 Script file - non-printable characters found
 - 11 **RESERVE**
 - 12 Error opening SPF
-- 13 Error opening table on read/delete command
+- 13 Error opening table on "read"/"delete" command
 - 14 Error opening F.MNEMONIC.COMPANY
 - 15 Error reading F.MNEMONIC.COMPANY
 - 16 Changes not saved
@@ -976,7 +976,7 @@ Return codes supported by the interpreter:
 - 27 @SM number is not numeric
 - 28 @SM number requires @VM number to be set explicitly
 - 29 Subvalue for LOCAL.REF is set up in @VM place
-- 30 Error parsing update command
+- 30 Error parsing "update" command
 - 31 VERSION or commit mode expected
 - 32 VERSION expected
 - 33 Commit mode expected
@@ -1012,31 +1012,31 @@ Return codes supported by the interpreter:
 
 ## stdmacros
 
-- \$BLANK\$
-- \$COMMA\$
-- \$DICT\$
-- \$DIR\_DELIM\_CH\$
-- \$EXECRETCODE\$
-- \$EXECRETLIST\$
-- \$EXECRETDATA\$
-- \$EXECSCREEN\$
-- \$FM\$
-- \$ID.COMPANY\$
-- \$LCCY\$
-- \$LF\$
-- \$LPARENTH\$
-- \$LREF\$
-- \$NEWRECORD\$
-- \$NUMSEL\$ - number of records in the list after getlist command
-- \$OFSCOMMIT\$
-- \$OFSOUTPUT\$
-- \$PASSWORD\$
-- \$RECORD\$
-- \$RPARENTH\$
-- \$SM\$ - subvalue mark
-- \$SPACE\$
-- \$TAB\$
-- \$TM\$
-- \$TODAY\$
-- \$USERNAME\$
-- \$VM\$ value mark
+- \$BLANK\$ - empty string
+- \$COMMA\$ - comma
+- \$DICT\$ - dyn. array with dictionary of table (populated by "read" command)
+- \$DIR\_DELIM\_CH\$ - DIR_DELIM_CH from JBC.h
+- \$EXECRETCODE\$ - return code of EXECUTE in "exec" command (RETURNING)
+- \$EXECRETLIST\$ - return list of EXECUTE in "exec" command (RTNLIST)
+- \$EXECRETDATA\$ - return data of EXECUTE in "exec" command (RTNDATA)
+- \$EXECSCREEN\$ - screen output of executed command (isn't shown on screen by default)
+- \$FM\$ - field mark (ASCII 254)
+- \$ID.COMPANY\$ - ID.COMPANY from I_COMMON
+- \$LCCY\$ - LCCY from I_COMMON
+- \$LF\$ - line feed (ASCII 10)
+- \$LPARENTH\$ - left parentheses (to use in move ... func if it's in parameters)
+- \$LREF\$ - dyn. array with local field names of table (populated by "read" command)
+- \$NEWRECORD\$ - 1 if a record in "read" command is a new one; 0 for existing record
+- \$NUMSEL\$ - number of records in the list after "getlist" command
+- \$OFSCOMMIT\$ - 1 or 0 depending on OFS.BULK.MANAGER result
+- \$OFSOUTPUT\$ - outgoing OFS message
+- \$PASSWORD\$ - user password
+- \$RECORD\$ - record read by "read" command
+- \$RPARENTH\$ - right parentheses (to use in move ... func if it's in parameters)
+- \$SM\$ - subvalue mark (ASCII 252)
+- \$SPACE\$ - space (ASCII 32)
+- \$TAB\$ - Tab (ASCII 9)
+- \$TM\$ - text mark (ASCII 251)
+- \$TODAY\$ - TODAY from I_COMMON
+- \$USERNAME\$ - T24 user login name
+- \$VM\$ - value mark (ASCII 253)
