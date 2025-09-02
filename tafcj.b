@@ -9,7 +9,7 @@ PROGRAM tafcj
     $INSERT I_F.OFS.SOURCE
     $INSERT I_F.OFS.REQUEST.DETAIL
 
-    CRT 'tafcj script interpreter v. 1.001'
+    CRT 'tafcj script interpreter v. 1.002'
 
     GOSUB initvars
     GOSUB parseparams
@@ -1778,11 +1778,17 @@ xecread:
 
         DIM DICT_list(FILE_no_curr)
         DIM DICT_list_lref(FILE_no_curr)
-        GOSUB ygetdict
+        GOSUB ygetdict   ;*  $DICT$, $LREF$ (25, 26) are set there
 
     END ELSE
         FILE_no_curr = posn
+        MACRO_list(25) = DICT_list(FILE_no_curr)
+        MACRO_list(26) = DICT_list_lref(FILE_no_curr)
+        FIND 'RECORD.STATUS' IN DICT_list(FILE_no_curr) SETTING REC_STAT_posn ELSE REC_STAT_posn = 0
+        FIND 'OVERRIDE' IN DICT_list(FILE_no_curr) SETTING OVERRIDE_posn ELSE OVERRIDE_posn = 0
+        FIND 'LOCAL.REF' IN DICT_list(FILE_no_curr) SETTING LOCREF_posn ELSE LOCREF_posn = 0
     END
+
 
     RECORD_is_new = @FALSE
     READ RECORD_curr FROM FILE_handle_list(FILE_no_curr), RECORD_id_curr ELSE
@@ -2066,10 +2072,10 @@ yaudtsave:
 
 *----------------------------------------------------------------------------------------------------------------------------------
 ygetdict:
-* in: FILE_fname_list<FILE_no_curr>
+* in: FILE_no_curr
 * out: DICT_list(FILE_no_curr)
 * out: DICT_list_lref(FILE_no_curr)
-* out: REC_STAT_posn, OVERRIDE_posn
+* out: REC_STAT_posn, OVERRIDE_posn, LOCREF_posn, $DICT$, $LREF$
 
     dict_sel_list = ''    ;   dict_sel_list_lref = ''
 
