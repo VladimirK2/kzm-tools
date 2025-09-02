@@ -9,7 +9,7 @@ PROGRAM tafcj
     $INSERT I_F.OFS.SOURCE
     $INSERT I_F.OFS.REQUEST.DETAIL
 
-    CRT 'tafcj script interpreter v. 0.999'
+    CRT 'tafcj script interpreter v. 1.001'
 
     GOSUB initvars
     GOSUB parseparams
@@ -166,6 +166,8 @@ initvars:
     DIM OUT_file_handles(1)
     MAT OUT_file_handles = ''
     OVERRIDE_posn = -1
+
+    PORT_no = SYSTEM(18)
 
     RECORD_curr = ''
     RECORD_curr_init = ''
@@ -752,10 +754,11 @@ xeccommit:
         RECORD_curr<REC_STAT_posn> = 'IHLD'
         RECORD_curr<REC_STAT_posn + 1> += 1
 
-        IF T24_login EQ '' THEN RECORD_curr<REC_STAT_posn + 2> = '42_TODO'
-        ELSE RECORD_curr<REC_STAT_posn + 2>= T24_userid
+        IF T24_login EQ '' THEN RECORD_curr<REC_STAT_posn + 2> = PORT_no : '_TODO'
+        ELSE RECORD_curr<REC_STAT_posn + 2>= PORT_no : '_' : T24_userid
 
         RECORD_curr<REC_STAT_posn + 3> = OCONV(DATE(), 'DG')[3,6] : OCONV(OCONV(TIME(), 'MT'), 'MCC;:;')
+        RECORD_curr<REC_STAT_posn + 4> = ''   ;* clear AUTHORISER
 
         WRITE RECORD_curr TO f_nau, RECORD_id_curr ON ERROR
             ERROR_message = 'Unable to write to ': nau_file
