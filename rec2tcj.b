@@ -14,7 +14,7 @@ PROGRAM rec2tcj
 
     param_one = SENTENCE(1)
 
-    CRT SYSTEM(40) : ' v. 0.999'
+    CRT SYSTEM(40) : ' v. 1.000'
     IF param_one EQ '' THEN
         CRT 'Usage: ' : SYSTEM(40) : ' [-t:]TABLE [-r:]RECORD [options]'
         CRT '---------------------------------------------------------------------------------------------------------'
@@ -30,6 +30,7 @@ PROGRAM rec2tcj
         CRT '-raw       raw mode - can be used for L apps or data files without corresponding application or even DICT'
         CRT '---------------------------------------------------------------------------------------------------------'
         CRT '-l:list    process a saved list in format TABLE>REC'
+        CRT '-d:field:content    default a field, e.g. -d:ACCOUNT.OFFICER:1 (mask spaces in content with #20)'
         CRT '-o:file    output to &SAVEDLISTS&\file (or to other folder if specified), otherwise output to screen'
         EXIT(1)
     END
@@ -43,6 +44,7 @@ PROGRAM rec2tcj
     param_list = @FALSE  ;  write_to = ''
     the_file = ''  ;  rec_id = ''  ;  commit_mode = ''  ;  raw_mode = @FALSE
     last_file = ''
+    default_fields = ''    ;  default_cont = ''
 
     IF params_are_fixed THEN
         the_file = param_one
@@ -60,6 +62,12 @@ PROGRAM rec2tcj
         down_case_par = DOWNCASE(a_param[1, 3])
 
         BEGIN CASE
+
+            CASE down_case_par EQ '-d:'
+                def_fld = FIELD(a_param, ':', 2)
+                def_cont = FIELD(a_param, ':', 3, 99)
+                CHANGE '#20' TO ' ' IN def_cont
+                default_fields<-1> = def_fld    ;  default_cont<-1> = def_cont
 
             CASE NOT(params_are_fixed) AND down_case_par EQ '-t:'
                 the_file = FIELD(a_param, ':', 2, 99)
@@ -281,7 +289,9 @@ ProcRec:
                 IF it_is_k_dot THEN CONTINUE
             END
 
-            fld_cont = the_rec<fld_posn>
+            FIND fld_name IN default_fields SETTING default_posn ELSE default_posn = 0
+            IF default_posn THEN fld_cont = default_cont<default_posn>
+            ELSE fld_cont = the_rec<fld_posn>
 
             FOR i_ch = 127 TO 251
                 IF INDEX(fld_cont, CHAR(i_ch), 1) THEN
