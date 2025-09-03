@@ -9,7 +9,7 @@ PROGRAM tafcj
     $INSERT I_F.OFS.SOURCE
     $INSERT I_F.OFS.REQUEST.DETAIL
 
-    CRT 'tafcj script interpreter v. 1.002'
+    CRT 'tafcj script interpreter v. 1.003'
 
     GOSUB initvars
     GOSUB parseparams
@@ -2039,10 +2039,17 @@ yalertdup:
             OPENSEQ DUP_dir, DUP_file TO f_DUP_file THEN
                 WEOFSEQ f_DUP_file
             END ELSE
-                CREATE f_DUP_file ELSE ERROR_message = 'Unable to create output file ' : DUP_dir : DIR_DELIM_CH : DUP_file  ;  GOSUB doexit
+                CREATE f_DUP_file ELSE
+                    f_DUP_file = ''  ;* otherwise "Invalid or uninitialised variable -- NULL USED , Var f_DUP_file , Line    50 , Source tafcj.b"
+                    EXIT_code = 58
+                    ERROR_message = 'Unable to create output file ' : DUP_dir : DIR_DELIM_CH : DUP_file  ;  GOSUB doexit
+                END
             END
         END
-        WRITESEQ ALERT_msg TO f_DUP_file ELSE ERROR_message = 'Unable to write to output file'  ;  GOSUB doexit
+        WRITESEQ ALERT_msg TO f_DUP_file ELSE
+            EXIT_code = 61
+            ERROR_message = 'Unable to write to output file'  ;  GOSUB doexit
+        END
     END
 
     RETURN
