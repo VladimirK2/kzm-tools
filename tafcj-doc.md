@@ -464,6 +464,12 @@ Proceed with jQL SELECT.
     :no_more_LOCKING_SEL
     exit
         1000
+    # optional special label where we go when SELECT returned error
+    :sel_error_LOCKING_SEL
+    alert
+        Select error
+    exit
+        1001
 
 Output:
 
@@ -1007,7 +1013,7 @@ Return codes supported by the interpreter:
 - 58 Unable to create file for output
 - 59 Area number N already used for output
 - 60 No file for area number N opened for output
-- 61 Error writing to output file for area number N
+- 61 Error writing to output file
 - 62 Unable to clone from non-existing record
 
 ## stdmacros
@@ -1031,7 +1037,7 @@ Return codes supported by the interpreter:
 - \$OFSCOMMIT\$ - 1 or 0 depending on OFS.BULK.MANAGER result
 - \$OFSOUTPUT\$ - outgoing OFS message
 - \$PASSWORD\$ - user password
-- \$RECORD\$ - record read by "read" command
+- \$RECORD\$ - record read by "read" command (initial record; not one after amendments)
 - \$RPARENTH\$ - right parentheses (to use in move ... func if it's in parameters)
 - \$SM\$ - subvalue mark (ASCII 252)
 - \$SPACE\$ - space (ASCII 32)
