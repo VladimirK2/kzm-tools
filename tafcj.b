@@ -9,7 +9,7 @@ PROGRAM tafcj
     $INSERT I_F.OFS.SOURCE
     $INSERT I_F.OFS.REQUEST.DETAIL
 
-    CRT 'tafcj script interpreter v. 1.003'
+    CRT 'tafcj script interpreter 1.2.1'
 
     GOSUB initvars
     GOSUB parseparams
@@ -21,52 +21,43 @@ PROGRAM tafcj
 *----------------------------------------------------------------------------------------------------------------------------------
 doexit:
 
-    IF EXIT_code NE 1000 THEN
-        IF INFO_list THEN
-            CHANGE @FM TO CHAR(10) IN INFO_list
-            CRT INFO_list
-        END
-
-        IF WARN_list THEN
-            CHANGE @FM TO CHAR(10) IN WARN_list
-            CRT WARN_list
-        END
-    END
-
     IF OUT_file_names NE '' THEN
         out_qty = INMAT(OUT_file_handles)
         FOR i = 1 TO out_qty
             IF ASSIGNED(OUT_file_handles(i)) AND OUT_file_handles(i) NE '' THEN
-                IF EXIT_code NE 1000 THEN
-                    info_msg = '[INFO] Closing {}...'
-                    CHANGE '{}' TO FILEINFO(OUT_file_handles(i), 1)<20> IN info_msg
-                    CRT info_msg
-                END
+                info_msg = '[INFO] Closing {}...'
+                CHANGE '{}' TO FILEINFO(OUT_file_handles(i), 1)<20> IN info_msg
+                INFO_list<-1> = info_msg
                 CLOSESEQ OUT_file_handles(i)
             END
         NEXT i
     END
 
     IF DUP_file NE '' AND f_DUP_file NE '' THEN
-        IF EXIT_code NE 1000 THEN
-            info_msg = '[INFO] Closing {}...'
-            CHANGE '{}' TO FILEINFO(f_DUP_file, 1)<20> IN info_msg
-            CRT info_msg
-        END
+        info_msg = '[INFO] Closing {}...'
+        CHANGE '{}' TO FILEINFO(f_DUP_file, 1)<20> IN info_msg
+        INFO_list<-1> = info_msg
         CLOSESEQ f_DUP_file
     END
 
-    IF EXIT_code EQ 0 THEN CRT '[INFO] Finished successfully'
-    ELSE
-        IF EXIT_code NE 1000 THEN
+    IF INFO_list THEN
+        CHANGE @FM TO CHAR(10) IN INFO_list
+        CRT INFO_list
+    END
+
+    IF EXIT_code NE 2 THEN
+        CRT '[INFO] ' : SCRIPT_folder : DIR_DELIM_CH : SCRIPT_file : ' finished' :
+
+        IF EXIT_code EQ 0 THEN CRT ' successfully'
+        ELSE
+            CRT ''
             CRT '[ERROR] ' : ERROR_message
             CRT 'Exit code: ' : EXIT_code
             IF SCRIPT_line_no GT 0 THEN CRT 'Script line: ' : SCRIPT_line_no
         END
-    END
 
-    IF EXIT_code EQ 1000 THEN EXIT_code = 0
-    ELSE CRT 'Elapsed time: ' : FMT(TIMESTAMP() - START_time, 'R2') : ' s.'
+        CRT 'Elapsed time: ' : FMT(TIMESTAMP() - START_time, 'R2') : ' s.'
+    END
 
 * otherwise infinite loop in WORLD.DISPLAY.b on EX invocation
     GTSACTIVE = ''
@@ -167,6 +158,7 @@ initvars:
     MAT OUT_file_handles = ''
     OVERRIDE_posn = -1
 
+    PARAM_info = ''
     PORT_no = SYSTEM(18)
 
     RECORD_curr = ''
@@ -188,8 +180,6 @@ initvars:
 
     T24_login = ''   ;  T24_passwd = '' ;  T24_userid = ''
 
-    WARN_list = ''
-
     GOSUB yloadcompany
 
     RETURN
@@ -207,7 +197,6 @@ parseparams:
 
     OFS_source_id = SENTENCE(1)
     IF OFS_source_id EQ '' THEN
-        ERROR_message = 'Parameters missing'
         EXIT_code = 2
         GOSUB dohelp
         GOSUB doexit
@@ -254,6 +243,9 @@ parseparams:
             CHANGE '#20' TO ' ' IN MACRO_value
             CHANGE '#3e' TO '>' IN MACRO_value
             CHANGE '#3d' TO '=' IN MACRO_value
+            CHANGE '#fe' TO @FM IN MACRO_value
+            CHANGE '#fd' TO @VM IN MACRO_value
+            CHANGE '#fc' TO @SM IN MACRO_value
 
             FIND MACRO_name IN MACRO_name_list SETTING posn ELSE posn = 0
             IF posn GT 0 THEN
@@ -261,6 +253,12 @@ parseparams:
                 EXIT_code = 53
                 GOSUB doexit
             END
+
+            val_for_info = MACRO_value
+            CHANGE @FM TO ' (@FM) ' IN val_for_info
+            CHANGE @VM TO ' (@VM) ' IN val_for_info
+            CHANGE @SM TO ' (@SM) ' IN val_for_info
+            PARAM_info<-1> = MACRO_name : ' = ' : DQUOTE(val_for_info)
 
             GOSUB ysetmacro
 
@@ -375,6 +373,12 @@ readscript:
         GOSUB doexit
     END
 
+    CRT 'Script to run: ' : SCRIPT_folder : DIR_DELIM_CH : SCRIPT_file
+    IF PARAM_info NE '' THEN
+        CHANGE @FM TO CHAR(10) IN PARAM_info
+        CRT 'Variable(s) passed to script:'
+        CRT PARAM_info
+    END
     CRT 'Reading script...'
 
     LOOP  ;* read all file in one go
@@ -496,7 +500,12 @@ runscript:
 
         BEGIN CASE
 
-        CASE CMD_line EQ 'alert'       ;     GOSUB xecalert
+        CASE CMD_line EQ 'alert'       ;     GOSUB xecalert   ;* TODO gradually phase out
+        CASE CMD_line EQ 'print'       ;     GOSUB xecalert
+        CASE CMD_line EQ 'info'       ;     GOSUB xecalert
+        CASE CMD_line EQ 'warn'       ;     GOSUB xecalert
+        CASE CMD_line EQ 'error'       ;     GOSUB xecalert
+
         CASE CMD_line EQ 'clear'       ;     GOSUB xecclear
         CASE CMD_line EQ 'clone'       ;     GOSUB xecclone
         CASE CMD_line EQ 'commit'      ;     GOSUB xeccommit
@@ -506,6 +515,7 @@ runscript:
         CASE CMD_line EQ 'delete'      ;     GOSUB xecdelete
         CASE CMD_line EQ 'exec'        ;     GOSUB xecexec
         CASE CMD_line EQ 'exit'        ;     GOSUB xecexit
+        CASE CMD_line EQ 'formlist'     ;    GOSUB xecformlist
         CASE CMD_line EQ 'getlist'     ;     GOSUB xecgetlist
         CASE CMD_line EQ 'getnext'     ;     GOSUB xecgetnext
         CASE CMD_line EQ 'jump'        ;     GOSUB xecjump
@@ -552,13 +562,15 @@ xecalert:
         ALERT_msg = SCRIPT_line
         GOSUB yprocalertmsg
 
-        IF RIGHT(ALERT_msg, 1) EQ ':' THEN
-            ALERT_msg = ALERT_msg[1, LEN(ALERT_msg) - 1]
-            CRT ALERT_msg :
-        END ELSE CRT ALERT_msg
-
-        GOSUB yalertdup
-        INFO_list<-1> = '[INFO] ' : ALERT_msg
+        IF CMD_line EQ 'alert' OR CMD_line EQ 'print' THEN   ;* TODO gradually phase out alert
+            IF RIGHT(ALERT_msg, 1) EQ ':' THEN
+                ALERT_msg = ALERT_msg[1, LEN(ALERT_msg) - 1]
+                CRT ALERT_msg :
+            END ELSE CRT ALERT_msg
+            GOSUB yalertdup
+        END ELSE
+            INFO_list<-1> = '[' : UPCASE(CMD_line) : '] ' : ALERT_msg
+        END
 
     REPEAT
 
@@ -641,7 +653,7 @@ xeccommit:
 *  RECORD_curr_init          : Commitments^LD.LOANS.AND.DEPOSITS^LD.SHRT^^40004^^^^^^^^^^^^^^2^24_S.DONEY2]1_DL.RESTORE^9802171914^13_S.DONEY^LU0010001^1^^
 
     IF NOT(RECORD_is_new) AND (RECORD_curr EQ RECORD_curr_init OR TRIM(RECORD_curr, @FM, 'T') EQ TRIM(RECORD_curr_init, @FM, 'T') ) THEN
-        WARN_list<-1> = '[WARN] LIVE record not changed (' : FILE_fname_list<FILE_no_curr> : '>' : RECORD_id_curr : ')'
+        INFO_list<-1> = '[WARN] LIVE record not changed (' : FILE_fname_list<FILE_no_curr> : '>' : RECORD_id_curr : ')'
 
         LOOP
             GOSUB ygetnextline
@@ -898,6 +910,7 @@ xecexec:
     END
 
     EXECUTE exec_cmd CAPTURING exec_screen RETURNING exec_ret_code RTNDATA exec_ret_data RTNLIST exec_ret_list
+    CHANGE @FM TO CHAR(10) IN exec_screen
     MACRO_list(11) = exec_screen
     MACRO_list(12) = exec_ret_code
     MACRO_list(13) = exec_ret_data
@@ -943,6 +956,7 @@ xecexit:
     IF is_EOF OR NOT(FIRST_space) THEN
         EXIT_code = 0
     END ELSE EXIT_code = SCRIPT_line
+    IF EXIT_code EQ 1000 THEN EXIT_code = 0   ;*  TODO gradually phase out 1000
 
     IF NOT(ISDIGIT(EXIT_code)) THEN
         ERROR_message = 'Non-numeric exit code'
@@ -950,14 +964,38 @@ xecexit:
         GOSUB doexit
     END
 
-    IF EXIT_code GT 0 AND EXIT_code LT 1000 THEN
+    IF EXIT_code GT 0 AND EXIT_code LT 1000 THEN    ;*  TODO gradually phase out 1000
         ERROR_message = 'Exit codes 1 - 999 are reserved for script interpreter'
         EXIT_code = 22
         GOSUB doexit
     END
 
-    ERROR_message = 'Non-zero exit code detected'
+    ERROR_message = 'Non-zero user exit code detected'
     GOSUB doexit
+
+    RETURN
+
+*----------------------------------------------------------------------------------------------------------------------------------
+xecformlist:
+
+    GOSUB ygetnextline
+    GOSUB ycheckcmdsyntax
+    sel_list_name = SCRIPT_line
+
+    GOSUB ygetnextline
+    GOSUB ycheckcmdsyntax
+    sel_list_array = SCRIPT_line
+
+    FIND sel_list_name IN SELECT_name_list SETTING posn ELSE posn = 0
+    IF posn = 0 THEN
+        sel_qty = INMAT(SELECT_list)
+        sel_qty ++
+        DIM SELECT_list(sel_qty)
+        SELECT_name_list<-1> = sel_list_name
+        posn = sel_qty
+    END
+
+    FORMLIST sel_list_array TO SELECT_list(posn)
 
     RETURN
 
@@ -1841,7 +1879,7 @@ xecrunofs:
 
         ofs_func = FIELD(OFS_msg, '/', 2)
         IF INDEX('IADR', ofs_func, 1) AND NOT(OFS_commit_ok) THEN
-            WARN_list<-1> = '[WARN] OFS error: ' : OFS_output
+            INFO_list<-1> = '[WARN] OFS error: ' : OFS_output
         END
 
     REPEAT
@@ -1898,7 +1936,7 @@ xecselect:
         LBL_togo = ':sel_error_' : sel_list
         FIND LBL_togo IN LBL_list SETTING posn ELSE posn = 0
         IF posn GT 0 THEN
-            WARN_list<-1> = '[WARN] SELECT error [' : sel_cmd : ']'
+            INFO_list<-1> = '[WARN] SELECT error [' : sel_cmd : ']'
             GOSUB yjump
             RETURN
         END
