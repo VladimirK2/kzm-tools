@@ -5,11 +5,10 @@ PROGRAM tafcj
     $INSERT I_COMMON
     $INSERT I_EQUATE
     $INSERT I_GTS.COMMON
-
     $INSERT I_F.OFS.SOURCE
     $INSERT I_F.OFS.REQUEST.DETAIL
 
-    CRT 'tafcj script interpreter 1.2.1'
+    CRT 'tafcj script interpreter 1.2.2'
 
     GOSUB initvars
     GOSUB parseparams
@@ -500,10 +499,9 @@ runscript:
 
         BEGIN CASE
 
-        CASE CMD_line EQ 'alert'       ;     GOSUB xecalert   ;* TODO gradually phase out
         CASE CMD_line EQ 'print'       ;     GOSUB xecalert
-        CASE CMD_line EQ 'info'       ;     GOSUB xecalert
-        CASE CMD_line EQ 'warn'       ;     GOSUB xecalert
+        CASE CMD_line EQ 'info'        ;     GOSUB xecalert
+        CASE CMD_line EQ 'warn'        ;     GOSUB xecalert
         CASE CMD_line EQ 'error'       ;     GOSUB xecalert
 
         CASE CMD_line EQ 'clear'       ;     GOSUB xecclear
@@ -515,7 +513,7 @@ runscript:
         CASE CMD_line EQ 'delete'      ;     GOSUB xecdelete
         CASE CMD_line EQ 'exec'        ;     GOSUB xecexec
         CASE CMD_line EQ 'exit'        ;     GOSUB xecexit
-        CASE CMD_line EQ 'formlist'     ;    GOSUB xecformlist
+        CASE CMD_line EQ 'formlist'    ;    GOSUB xecformlist
         CASE CMD_line EQ 'getlist'     ;     GOSUB xecgetlist
         CASE CMD_line EQ 'getnext'     ;     GOSUB xecgetnext
         CASE CMD_line EQ 'jump'        ;     GOSUB xecjump
@@ -562,7 +560,7 @@ xecalert:
         ALERT_msg = SCRIPT_line
         GOSUB yprocalertmsg
 
-        IF CMD_line EQ 'alert' OR CMD_line EQ 'print' THEN   ;* TODO gradually phase out alert
+        IF CMD_line EQ 'print' THEN
             IF RIGHT(ALERT_msg, 1) EQ ':' THEN
                 ALERT_msg = ALERT_msg[1, LEN(ALERT_msg) - 1]
                 CRT ALERT_msg :
@@ -649,8 +647,8 @@ xeccommit:
         GOSUB doexit
     END
 
-*  RECORD_curr               : Commitments^LD.LOANS.AND.DEPOSITS^LD.SHRT^^40004^^^^^^^^^^^^^^2^24_S.DONEY2]1_DL.RESTORE^9802171914^13_S.DONEY^LU0010001^1
-*  RECORD_curr_init          : Commitments^LD.LOANS.AND.DEPOSITS^LD.SHRT^^40004^^^^^^^^^^^^^^2^24_S.DONEY2]1_DL.RESTORE^9802171914^13_S.DONEY^LU0010001^1^^
+*  RECORD_curr               : Commitments^LD.LOANS.AND.DEPOSITS^LD.SHRT^^40004^^^^^^^^^^^^^^2^24_S.DONEY2]1_DL.RESTORE^9802171914^13_S.DONEY^GB0010001^1
+*  RECORD_curr_init          : Commitments^LD.LOANS.AND.DEPOSITS^LD.SHRT^^40004^^^^^^^^^^^^^^2^24_S.DONEY2]1_DL.RESTORE^9802171914^13_S.DONEY^GB0010001^1^^
 
     IF NOT(RECORD_is_new) AND (RECORD_curr EQ RECORD_curr_init OR TRIM(RECORD_curr, @FM, 'T') EQ TRIM(RECORD_curr_init, @FM, 'T') ) THEN
         INFO_list<-1> = '[WARN] LIVE record not changed (' : FILE_fname_list<FILE_no_curr> : '>' : RECORD_id_curr : ')'
@@ -956,7 +954,6 @@ xecexit:
     IF is_EOF OR NOT(FIRST_space) THEN
         EXIT_code = 0
     END ELSE EXIT_code = SCRIPT_line
-    IF EXIT_code EQ 1000 THEN EXIT_code = 0   ;*  TODO gradually phase out 1000
 
     IF NOT(ISDIGIT(EXIT_code)) THEN
         ERROR_message = 'Non-numeric exit code'
@@ -964,8 +961,8 @@ xecexit:
         GOSUB doexit
     END
 
-    IF EXIT_code GT 0 AND EXIT_code LT 1000 THEN    ;*  TODO gradually phase out 1000
-        ERROR_message = 'Exit codes 1 - 999 are reserved for script interpreter'
+    IF EXIT_code GT 0 AND EXIT_code LT 100 THEN
+        ERROR_message = 'Exit codes 1 - 99 are reserved for script interpreter'
         EXIT_code = 22
         GOSUB doexit
     END
@@ -1875,11 +1872,11 @@ xecrunofs:
         OFS_msg = SCRIPT_line
 
         GOSUB ylaunchofs
-*        OFS_commit_ok, OFS_output:  '$OFSCOMMIT$' , '$OFSOUT$'
+*        OFS_commit_ok, OFS_output ==>  '$OFSCOMMIT$', '$OFSOUT$' available in the script
 
         ofs_func = FIELD(OFS_msg, '/', 2)
         IF INDEX('IADR', ofs_func, 1) AND NOT(OFS_commit_ok) THEN
-            INFO_list<-1> = '[WARN] OFS error: ' : OFS_output
+            INFO_list<-1> = '[WARN] OFS.BULK.MANAGER set "requestCommitted" to 0; OFS reply: ' : OFS_output
         END
 
     REPEAT
@@ -2183,7 +2180,6 @@ ycheckcmdsyntax:
         EXIT_code = 18
         GOSUB doexit
     END
-
 
     RETURN
 
