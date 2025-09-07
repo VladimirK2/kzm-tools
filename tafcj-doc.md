@@ -49,7 +49,7 @@ Enclosed into dollar symbols. Similar to variables but can be used anywhere (exc
         abc
         const
             Hello
-    alert
+    print
         $abc$ World!
         $abc$$abc$$abc$
     # output:
@@ -60,10 +60,10 @@ Uppercase macros can't be reassigned (useful for constants to avoid accidental c
 
 Example:
 
-    alert
+    print
         $TODAY$
 
-See also: [move](#move), [alert](#alert)
+See also: [move](#move), [print](#print)
 
 ### Labels
 
@@ -84,12 +84,12 @@ Labels are case-sensitive. They can be addressed via a macro (but can't contain 
     jump
         :proc$t24rel$
     :procR19
-    alert
+    print
         Older release
     jump
         :fini
     :procR23
-    alert
+    print
         Newer release
     :fini
 
@@ -109,39 +109,73 @@ All examples contain the data from Temenos Model Bank R23 running on Windows Ser
 
 ### Commands (alphabetical index)
 
-[alert](#alert) | [clear](#clear) | [clone](#clone) | [commit](#commit) | [company](#company) | [debug](#debug)  | [default](#default) | [delete](#delete) | [exec](#exec)  | [exit](#exit) | [getlist](#getlist) | [getnext](#getnext) | [jump](#jump) | [move](#move) | [out](#out) / [outfile](#outfile) | [precision](#precision) | [read](#read) | [runofs](#runofs) | [select](#select) | [sleep](#sleep) | [update](#update)
+[clear](#clear) | [clone](#clone) | [commit](#commit) | [company](#company) | [debug](#debug)  | [default](#default) | [delete](#delete) | [error](#error) | [exec](#exec)  | [exit](#exit) | [formlist](#formlist) | [getlist](#getlist) | [getnext](#getnext) | [jump](#jump) | [info](#info) | [move](#move) | [out](#out) / [outfile](#outfile) | [precision](#precision) | [print](#print) | [read](#read) | [runofs](#runofs) | [select](#select) | [sleep](#sleep) | [update](#update) | [warn](#warn)
 
 ### Commands (in the order that allows better learning process)
 
-#### alert
+#### print
 
-Output a message to the screen. Message will appear immediately and also in the final report.
+Output a message to the screen.
 
-    alert
+    print
         All is done
 
-*All alerts are repeated in "final report" (together with [INFO] prefix) in order not to be missed during execution - especially if there was output of T24 transaction processing that often resets the screen.*
+Several outputs can be issued at once, e.g.:
 
-Several alerts can be issued at once, e.g.:
-
-    alert
+    print
         Working...
         All is done
 
-jBASE delimiters are masked in alert output, e.g.: (@FM) etc.
+Useful for interaction with user.
+
+jBASE delimiters are masked in the screen output, e.g.: (@FM) etc.
+
+#### info
+
+Create a message that will be output in the final report with \[INFO\] prefix.
+
+    info
+        All is done
+
+Screen output:
+
+    Reading script...
+    Parsing script...
+    Proceeding ...
+    [INFO] All is done
+    [INFO] .\test.tcj finished successfully
+    Elapsed time: 0.01 s.
+
+#### warn
+
+Create a message that will be output in the final report with \[WARN\] prefix.
+
+    warn
+        Nothing was selected
+
+#### error
+
+Create a message that will be output in the final report with \[ERROR\] prefix.
+
+    error
+        Record read failed
+
+##### Note
+
+*Execution won't stop on issuing "error" command - use "exit" one.*
 
 #### exit
 
-Finish the work. Return 0 by default or - if specified - a numeric error code. Error codes 1 - 999 are reserved for the script interpreter. Code 1000 can be used to suppress the output of the final report.
+Finish the work. Return 0 by default or - if specified - a numeric user error code. Error codes 1 - 99 are reserved for the script interpreter.
 
     # exit with the error.
     exit
-        1001
+        100
 
 The return code presents in the screen output:
 
     [ERROR] Non-zero exit code detected
-    Exit code: 1001
+    Exit code: 100
     Script line: 3
     Elapsed time: 0.01 s.
 
@@ -159,53 +193,55 @@ Create a table:
 Output:
 
     [INFO] Command at the line 2: return code ""
-    [INFO] Finished successfully
+    [INFO]  .\test.tcj finished successfully
 
 Second run:
 
     [INFO] Command at the line 2: return code "413]There is already an object named 'D_F_TEST' in the database."
-    [INFO] Finished successfully
+    [INFO]  .\test.tcj finished successfully
 
 *Successful finish happened because the option to check the return code wasn't activated (see below)*.
 
 Copy a record:
 
     exec
-        COPY FROM F.SPF TO F.TEST ALL
+        COPY FROM F.SPF TO &TEMP& ALL
 
 Output:
 
     [INFO] Command at the line 2: return code "805]1]COPY_DONE"
-    [INFO] Finished successfully
+    [INFO]  .\test.tcj finished successfully
 
 Check return code, script will fail if it doesn't match:
 
     exec
-        COPY FROM F.SPF TO F.TEST ALL
+        COPY FROM F.SPF TO &TEMP& ALL
         805$VM$1$VM$COPY_DONE
 
 Output:
 
-    [ERROR] Command at the line 2: return code "805]0]COPY_DONE", expected : "805]1]COPY_DONE"
+    [ERROR] Command at the line 2: return code "805 (@VM) 0 (@VM) COPY_DONE", expected: "805 (@VM) 1 (@VM) COPY_DONE". Screen output:
+    'SYSTEM' already exists
+    0 records copied
     Exit code: 56
     Script line: 3
 
 Correct the copy command:
 
     exec
-        COPY FROM F.SPF TO F.TEST ALL OVERWRITING
+        COPY FROM F.SPF TO &TEMP& ALL OVERWRITING
         805$VM$1$VM$COPY_DONE
 
 Output:
 
     [INFO] Command at the line 2: return code "805]1]COPY_DONE" (as expected)
-    [INFO] Finished successfully
+    [INFO]  .\test.tcj finished successfully
 
 System macros \$EXECSCREEN\$, \$EXECRETCODE\$, \$EXECRETDATA\$ and \$EXECRETLIST\$ are available after "exec" command:
 
     exec
         COPY FROM F.SPF TO F.TEST ALL OVERWRITING
-    alert
+    print
         $EXECSCREEN$
         $EXECRETCODE$
 
@@ -234,13 +270,13 @@ After "read" command system macros \$RECORD\$, \$DICT\$ and \$LREF\$ are availab
     read
         F.ABBREVIATION
         FT
-    alert
+    info
         $RECORD$
         $DICT$
     read
         FBNK.AA.ARRANGEMENT.ACTIVITY
         DUMMY
-    alert
+    info
         $LREF$
 
 Output:
@@ -257,11 +293,11 @@ To see if a record is a new or existing one the system macro \$NEWRECORD\$ can b
     jump
         :newrec$NEWRECORD$
     :newrec0
-    alert
+    print
         Record exists
     exit
     :newrec1
-    alert
+    print
         Record is new
 
 #### update
@@ -431,7 +467,7 @@ Pass execution to a line after specified label.
     jump
         :proc$01$
     :proc1
-    alert
+    print
         $cntr$
     jump
         :strt
@@ -456,7 +492,7 @@ Proceed with jQL SELECT.
     getnext
         LOCKING_SEL
         next_id
-    alert
+    print
         $next_id$
     jump
         :strt
@@ -466,7 +502,7 @@ Proceed with jQL SELECT.
         1000
     # optional special label where we go when SELECT returned error
     :sel_error_LOCKING_SEL
-    alert
+    print
         Select error
     exit
         1001
@@ -487,6 +523,29 @@ Get saved list. See [select](#select).
 
 Get the next item in saved list. See [select](#select).
 
+#### formlist
+
+Form a list from dynamic array.
+
+    formlist
+        KEYS
+        REC1$FM$REC2$FM$REC3
+    getnext
+        KEYS
+        key1
+    getnext
+        KEYS
+        key2
+    getnext
+        KEYS
+        key3
+    print
+        $key1$ / $key2$ / $key3$
+
+Output:
+
+    REC1 / REC2 / REC3
+
 #### move
 
 Assign a macro.
@@ -505,7 +564,7 @@ A constant:
         array
         const
             A$FM$BB$VM$CCC$SM$$zero$
-    alert
+    print
         $array$
 
 Output:
@@ -518,7 +577,7 @@ Output:
         var
         const
             (A   B     C)
-    alert
+    print
         var
 
 Output:
@@ -539,7 +598,7 @@ See also: [Standard macros](#stdmacros).
         mname
         field
             PRIVACY.STATUS
-    alert
+    print
         $tc$, $mname$
 
 Output:
@@ -573,7 +632,7 @@ Examples:
         qty
         func
             DCOUNT($prods$, $VM$)
-    alert
+    print
         $qty$
 
 Output: 627.
@@ -592,7 +651,7 @@ Notes:
         output
         func
             MATCHES( FT220172HQJ4, 'F'1A5N5X )
-    alert
+    print
         Result: $output$
 
 Output:
@@ -611,7 +670,7 @@ More examples:
         ftype
         func
             EXTRACT( $finfo$, 21 )
-    alert
+    print
         $ftype$
     # output: XMLMSSQL
 
@@ -619,7 +678,7 @@ More examples:
         outp
         func
             CONVERT(CEYZ, +-*$COMMA$, ABCCCDEFCDYZ)
-    alert
+    print
         $outp$
     # output: AB+++D-F+D*,
 
@@ -627,7 +686,7 @@ More examples:
         var
         func
             DQUOTE( A   B     C)
-    alert
+    print
         $var$
     # output: "A   B     C"
 
@@ -635,7 +694,7 @@ More examples:
         var
         func
             DQUOTE( $SPACE$A B     C)
-    alert
+    print
         $var$
     # output: " A B     C"
 
@@ -645,14 +704,14 @@ In this example conditional TAFC/TAFJ script lines are shown:
         func_name
         const
         GETENV
-    alert
+    print
         Testing $func_name$() ...
     move
         rezt
         func
     =TAFC    $func_name$( TAFC_HOME )
     =TAFJ    $func_name$( TAFJ_HOME )
-    alert
+    print
         $rezt$
 
 Output (TAFC):
@@ -680,7 +739,7 @@ Output (TAFJ):
         found
         func
             FIND( $tofind$, $appl$ )
-    alert
+    print
         $found$
     move
         random
@@ -692,13 +751,36 @@ Output (TAFJ):
         found
         func
             FIND( $tofind$, $appl$ )
-    alert
+    print
         $found$
 
 Output:
 
     1 (@FM) 5 (@FM) 1
     -1
+
+*Pseudo-functions INS() and DEL(); example:*
+
+    move
+        in_array
+        const
+            1$FM$2$FM$3
+        out_array
+        func
+            INS(4, $in_array$, 2)
+    print
+        $out_array$
+    move
+        out_array
+        func
+            DEL($in_array$, 2)
+    print
+        $out_array$
+
+Output:
+
+    1 (@FM) 4 (@FM) 2 (@FM) 3
+    1 (@FM) 3
 
 ##### subr
 
@@ -731,7 +813,7 @@ Script:
         qty
         func
             DCOUNT($lrefs$, $FM$)
-    alert
+    print
         $fld1$
         $fld2$
         $fld3$
@@ -760,7 +842,7 @@ Script test.tcj:
         out2
         func
             CHANGE( $EXECSCREEN$, $FM$, $LF$ )
-    alert
+    print
         $out1$
         $out2$
     exit
@@ -772,7 +854,7 @@ Script test2.tcj:
         folder
         const
             MISC.BP
-    alert
+    print
         Will proceed $folder$
     exit
         1000
@@ -794,7 +876,7 @@ Execute OFS message.
             TEST.FTNAU
     runofs
         ABBREVIATION,/I/PROCESS//0,$USERNAME$/$PASSWORD$,$abbr_id$,ORIGINAL.TEXT::=FUNDS.TRANSFER? E
-    alert
+    print
         $OFSCOMMIT$
         $OFSOUTPUT$
 
@@ -810,7 +892,7 @@ Result:
         tdate
         func
             TIMEDATE()
-    alert
+    print
         $tdate$
         Going to sleep 5 seconds
     sleep
@@ -819,7 +901,7 @@ Result:
         tdate
         func
             TIMEDATE()
-    alert
+    print
         $tdate$
 
 Output:
@@ -873,7 +955,7 @@ Invoke PRECISION statement.
         rezt
         func
             DIVS(1, 3)
-    alert
+    print
         $rezt$
     precision
         3
@@ -881,7 +963,7 @@ Invoke PRECISION statement.
         rezt
         func
             DIVS(1, 3)
-    alert
+    print
         $rezt$
 
 Output:
@@ -944,8 +1026,10 @@ Enter the TAFC/TAFJ debugger.
                       | -var:date:20170630 (mask spaces with #20)
                       | -var:equ:A#3dB (mask "=" with #3d)
                       | -var:rec:SPF#3eSYSTEM (mask ">" with #3e)
+                      | mask @FM/@VM/@SM as #fe / #fd / #fc
     -------------------------------------------------------------
-    -a:<file>         | duplicate all alerts to file
+    -a:<file>         | duplicate all "print" command outputs
+                      | to file
     -------------------------------------------------------------
 
 ## retcodes
@@ -954,7 +1038,7 @@ Return codes supported by the interpreter:
 
 - 0  success
 - 1  unknown error
-- 2  Parameters missing
+- 2  **RESERVE**
 - 3  Error opening OFS.SOURCE
 - 4  OFS.SOURCE @ID not found
 - 5  non-TELNET OFS.SOURCE
@@ -974,14 +1058,14 @@ Return codes supported by the interpreter:
 - 19 Duplicate label
 - 20 Label not found
 - 21 Non-numeric exit code
-- 22 Non-zero exit codes less than 1000 are reserved for script interpreter
+- 22 Non-zero exit codes less than 100 are reserved for script interpreter
 - 23 Field not found
 - 24 LOCAL.REF should have both @VM and @SM specified
 - 25 LOCAL.REF not found in DICT
 - 26 @VM number is not numeric
 - 27 @SM number is not numeric
 - 28 @SM number requires @VM number to be set explicitly
-- 29 Subvalue for LOCAL.REF is set up in @VM place
+- 29 Subvalue for LOCAL.REF is to be set up in @VM place
 - 30 Error parsing "update" command
 - 31 VERSION or commit mode expected
 - 32 VERSION expected
