@@ -31,7 +31,7 @@ This command will run a script qwerty.tcj in bnk.run. If a script from other fol
 
 PW.MODEL is a recommended OFS.SOURCE to use. Note: it skips field validations; should they be necessary - OFS.SOURCE record with FIELD.VAL = YES is to be used (TELNET type only).
 
-"Minus" (-) can be used instead of OFS.SOURCE ID if there's no need to amend data (e.g.for reports).
+"Minus" (-) can be used instead of OFS.SOURCE ID if there's no need to amend data (e.g. for reports).
 
 If the script interpreter is run without parameters - the full list of them is being output. See chapter [parameters](#parameters).
 
@@ -82,13 +82,13 @@ Labels are case-sensitive. They can be addressed via a macro (but can't contain 
         field
             CURRENT.RELEASE
     jump
-        :proc$t24rel$
-    :procR19
+        :proc_$t24rel$
+    :proc_R19
     print
         Older release
     jump
         :fini
-    :procR23
+    :proc_R23
     print
         Newer release
     :fini
@@ -240,16 +240,17 @@ Output:
 System macros \$EXECSCREEN\$, \$EXECRETCODE\$, \$EXECRETDATA\$ and \$EXECRETLIST\$ are available after "exec" command:
 
     exec
-        COPY FROM F.SPF TO F.TEST ALL OVERWRITING
+        COPY FROM F.SPF TO &TEMP& ALL OVERWRITING
     print
         $EXECSCREEN$
         $EXECRETCODE$
 
 Output:
 
-    [INFO] Command at the line 2: return code "805]1]COPY_DONE"
-    [INFO] 1 records copied
-    [INFO] 805 (@VM) 1 (@VM) COPY_DONE
+    1 records copied
+    805 (@VM) 1 (@VM) COPY_DONE
+    [INFO] Command at the line 2: return code "805 (@VM) 1 (@VM) COPY_DONE"
+    [INFO] .\test.tcj finished successfully
 
 #### read
 
@@ -364,7 +365,7 @@ Update a field in the record being read into buffer. Syntax is OFS-like.
 
 ##### Note
 
-*Be careful in adding associations - all associated fields must be mentioned, even no-input and empty ones.*
+*Be careful in adding associations - all associated fields must be mentioned, even NOINPUT and empty ones.*
 
 #### commit
 
@@ -499,21 +500,20 @@ Proceed with jQL SELECT.
     # special label where we go when SELECT list is exhausted
     :no_more_LOCKING_SEL
     exit
-        1000
     # optional special label where we go when SELECT returned error
     :sel_error_LOCKING_SEL
-    print
+    error
         Select error
     exit
-        1001
+        100
 
 Output:
 
-    FBNK.ORDER.BY.CUST
-    FBNK.FT.BULK.CREDIT.AC
-    FBNK.DX.PRICE.INPUT
-    FBNK.DX.REVALUE
-    FBNK.DIARY
+    FBNK.AA.POS.TXN.DETAILS
+    FBNK.AC.LOCKED.EVENTS
+    FBNK.ACCOUNT
+    FBNK.AFRCIP.PAYMENT.INCIDENT
+    FBNK.AM.AMEND.VIRTUAL.BALANCE
 
 #### getlist
 
@@ -578,7 +578,7 @@ Output:
         const
             (A   B     C)
     print
-        var
+        $var$
 
 Output:
 
@@ -604,7 +604,7 @@ See also: [Standard macros](#stdmacros).
 Output:
     Seattle, OPT-IN
 
-Core field can be addressed by its number:
+Core field can also be addressed by its number:
 
     read
         FBNK.CUSTOMER
@@ -641,7 +641,7 @@ Notes:
 
 *Function parameters are to be specified without quotes, comma-delimited*.
 
-*Only one set of parentheses can be used in function definition. If those are necessary in function parameters, system macros \$LPARENTH\$ amd \$RPARENTH\$ are to be used*.
+*Only one set of parentheses can be used in function definition. If those are necessary in function parameters, system macros \$LPARENTH\$ and \$RPARENTH\$ are to be used*.
 
 *Commas in function parameters shall be represented as \$COMMA\$*.
 
@@ -747,17 +747,17 @@ Output (TAFJ):
             RND(100000)
         tofind
         const
-            ACCOUNT, I F3 $random$
+            ACCOUNT, I $random$
         found
         func
             FIND( $tofind$, $appl$ )
     print
-        $found$
+        $random$ found? => $found$
 
-Output:
+Output example:
 
     1 (@FM) 5 (@FM) 1
-    -1
+    31832 found? => -1
 
 *Pseudo-functions INS() and DEL(); example:*
 
@@ -832,21 +832,23 @@ Script test.tcj:
 
     exec
         DOS /c C:\temenos\TAFJ\bin\trun.bat tafcj - -s:\temenos\TAFJ\UD\test2.tcj -var:folder:ETC.BP
+        0$FM$0
     move
         out1
-        func
-            CHANGE( $EXECSCREEN$, $FM$, $LF$ )
+        const
+            $EXECSCREEN$
     exec
         DOS /c C:\temenos\TAFJ\bin\trun.bat tafcj - -s:\temenos\TAFJ\UD\test2.tcj
+        0$FM$0
     move
         out2
-        func
-            CHANGE( $EXECSCREEN$, $FM$, $LF$ )
+        const
+            $EXECSCREEN$
     print
+        1 ========>
         $out1$
+        2 ========>
         $out2$
-    exit
-        1000
 
 Script test2.tcj:
 
@@ -856,13 +858,36 @@ Script test2.tcj:
             MISC.BP
     print
         Will proceed $folder$
-    exit
-        1000
 
 Output:
 
+    Script to run: C:\temenos\TAFJ\UD\test.tcj
+    Reading script...
+    Parsing script...
+    Proceeding ...
+    1 ========>
+    tafcj script interpreter 1.2.4
+    Script to run: \temenos\TAFJ\UD\test2.tcj
+    Variable(s) passed to script:
+    folder = "ETC.BP"
+    Reading script...
+    Parsing script...
+    Proceeding ...
     Will proceed ETC.BP
+    [INFO] \temenos\TAFJ\UD\test2.tcj finished successfully
+    Elapsed time: 1.66 s.
+    2 ========>
+    tafcj script interpreter 1.2.4
+    Script to run: \temenos\TAFJ\UD\test2.tcj
+    Reading script...
+    Parsing script...
+    Proceeding ...
     Will proceed MISC.BP
+    [INFO] \temenos\TAFJ\UD\test2.tcj finished successfully
+    Elapsed time: 1.66 s.
+    [INFO] Command at the line 2: return code "0 (@FM) 0" (as expected)
+    [INFO] Command at the line 9: return code "0 (@FM) 0" (as expected)
+    [INFO] C:\temenos\TAFJ\UD\test.tcj finished successfully
 
 See chapter [parameters](#parameters).
 
@@ -876,15 +901,25 @@ Execute OFS message.
             TEST.FTNAU
     runofs
         ABBREVIATION,/I/PROCESS//0,$USERNAME$/$PASSWORD$,$abbr_id$,ORIGINAL.TEXT::=FUNDS.TRANSFER? E
-    print
+    info
         $OFSCOMMIT$
         $OFSOUTPUT$
 
 Result:
 
-    1
-    TEST.FTNAU/PWOFS233406951652333.01/1,ORIGINAL.TEXT:1:1=FUNDS.TRANSFER, E,CURR.NO:1:1=1,INPUTTER:1:1=69516_AUTHORISER__OFS_PW.MODEL,DATE.TIME:1:1=2312061432,
-    AUTHORISER:1:1=69516_AUTHORISER_OFS_PW.MODEL,CO.CODE:1:1=GB0010001,DEPT.CODE:1:1=1
+    [INFO] 1
+    [INFO] TEST.FTNAU/PWOFS241354671155470.00/1,ORIGINAL.TEXT:1:1=FUNDS.TRANSFER, E,CURR.NO:1:1=3,INPUTTER:1:1=46711_TEAMCITY__OFS_PW.MODEL,DATE.TIME:1:1=
+            2405141924,AUTHORISER:1:1=46711_TEAMCITY_OFS_PW.MODEL,CO.CODE:1:1=GB0010001,DEPT.CODE:1:1=1
+    [INFO] C:\temenos\TAFJ\UD\test.tcj finished successfully
+
+Second run:
+
+    [WARN] OFS.BULK.MANAGER set "requestCommitted" to 0; OFS reply: TEST.FTNAU/PWOFS241351364755650.01/-1/NO,LIVE RECORD NOT CHANGED
+    [INFO] 0
+    [INFO] TEST.FTNAU/PWOFS241351364755650.01/-1/NO,LIVE RECORD NOT CHANGED
+    [INFO] C:\temenos\TAFJ\UD\test.tcj finished successfully
+
+The user has to decide what to do with "0" in \$OFSCOMMIT\$. There are cases when "0" appears after a successful operation (e.g. in applying I function to ENQUIRY.REPORT).
 
 #### sleep
 
@@ -892,7 +927,7 @@ Result:
         tdate
         func
             TIMEDATE()
-    print
+    info
         $tdate$
         Going to sleep 5 seconds
     sleep
@@ -901,14 +936,14 @@ Result:
         tdate
         func
             TIMEDATE()
-    print
+    info
         $tdate$
 
 Output:
 
-    20:06:51 06 DEC 2023
-    Going to sleep 5 seconds
-    20:06:56 06 DEC 2023
+    [INFO] 19:46:55 15 MAY 2024
+    [INFO] Going to sleep 5 seconds
+    [INFO] 19:47:00 15 MAY 2024
 
 #### out
 
