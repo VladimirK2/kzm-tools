@@ -8,7 +8,7 @@ PROGRAM tafcj
     $INSERT I_F.OFS.SOURCE
     $INSERT I_F.OFS.REQUEST.DETAIL
 
-    CRT 'tafcj script interpreter 1.2.3'
+    CRT 'tafcj script interpreter 1.2.4'
 
     GOSUB initvars
     GOSUB parseparams
@@ -75,7 +75,7 @@ dohelp:
     CRT '-l:<login>     T24 login'
     CRT '-p:<password>  T24 password'
     CRT '-var:<value>   pass a variable, e.g. -var:dayno:T1'
-    CRT '-a:<file>      duplicate all alerts to file'
+    CRT '-a:<file>      duplicate all "print" command outputs to file'
 
     RETURN
 
@@ -1878,7 +1878,10 @@ xecrunofs:
 
         ofs_func = FIELD(OFS_msg, '/', 2)
         IF INDEX('IADR', ofs_func, 1) AND NOT(OFS_commit_ok) THEN
-            INFO_list<-1> = '[WARN] OFS.BULK.MANAGER set "requestCommitted" to 0; OFS reply: ' : OFS_output
+            INFO_list<-1> = '[WARN] OFS.BULK.MANAGER set "requestCommitted" to 0:'
+            CHANGE '/' : T24_passwd TO '/******' IN OFS_msg
+            INFO_list<-1> = '[WARN] OFS request: ' : OFS_msg
+            INFO_list<-1> = '[WARN] OFS reply: ' : OFS_output
         END
 
     REPEAT
