@@ -1027,6 +1027,43 @@ Change a current COMPANY. Necessary if a commit will be used. If not, data can b
         DESCRIPTION::=$descr$
     commit
 
+Get local currency for each company:
+
+    select
+        CMP
+        F.COMPANY
+    getlist
+        CMP
+    print
+        COMPANY   Local currency
+        ------------------------
+    :strt
+    getnext
+        CMP
+        cmp_id
+    company
+        $cmp_id$
+    print
+        $cmp_id$ $LCCY$
+    jump
+        :strt
+    :no_more_CMP
+    delete
+        &SAVEDLISTS&
+        CMP
+
+Output:
+
+    COMPANY   Local currency
+    ------------------------
+    AU0010001 AUD
+    GB0010001 USD
+    GB0010005 USD
+    GB0020001 GBP
+    MX0010001 MXN
+    NL0020001 EUR
+    US0010001 USD
+
 #### debug
 
 Enter the TAFC/TAFJ debugger.
