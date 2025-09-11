@@ -8,7 +8,7 @@ PROGRAM tafcj
     $INSERT I_F.OFS.SOURCE
     $INSERT I_F.OFS.REQUEST.DETAIL
 
-    CRT 'tafcj script interpreter 1.2.4'
+    CRT 'tafcj script interpreter 1.2.5'
 
     GOSUB initvars
     GOSUB parseparams
@@ -75,7 +75,8 @@ dohelp:
     CRT '-l:<login>     T24 login'
     CRT '-p:<password>  T24 password'
     CRT '-var:<value>   pass a variable, e.g. -var:dayno:T1'
-    CRT '-a:<file>      duplicate all "print" command outputs to file'
+    CRT '-a:<file>      duplicate all "print" command outputs (new file)'
+    CRT '-A:<file>      duplicate all "print" command outputs (append to file)'
 
     RETURN
 
@@ -84,6 +85,8 @@ initvars:
 
     IF GETENV('TAFJ_HOME', tafj_home) THEN TAFJ_on = @TRUE    ;* RUNNING.IN.TAFJ might be not yet set
     ELSE TAFJ_on = @FALSE
+
+    APPEND_mode = @FALSE
 
     AUDT_trail = ''
 
@@ -261,7 +264,15 @@ parseparams:
 
             GOSUB ysetmacro
 
-        CASE par_name EQ '-a'   ;* 2024-01-19 19:40 duplicate all alerts to file
+        CASE par_name EQ '-a' OR par_name EQ '-A'   ;*  duplicate all alerts to file
+
+            IF DUP_file NE '' THEN
+                ERROR_message = 'Duplicate "-a" parameter'
+                EXIT_code = 11
+                GOSUB doexit
+            END
+
+            IF par_name EQ '-A' THEN APPEND_mode = @TRUE
 
             out_file_spec = FIELD(a_param, ':', 2, 999)
             CHANGE '/' TO @FM IN out_file_spec
@@ -2077,7 +2088,7 @@ yalertdup:
     IF DUP_file NE '' THEN
         IF f_DUP_file EQ '' THEN
             OPENSEQ DUP_dir, DUP_file TO f_DUP_file THEN
-                WEOFSEQ f_DUP_file
+                IF NOT(APPEND_mode) THEN WEOFSEQ f_DUP_file
             END ELSE
                 CREATE f_DUP_file ELSE
                     f_DUP_file = ''  ;* otherwise "Invalid or uninitialised variable -- NULL USED , Var f_DUP_file , Line    50 , Source tafcj.b"
@@ -2086,9 +2097,17 @@ yalertdup:
                 END
             END
         END
-        WRITESEQ ALERT_msg TO f_DUP_file ELSE
-            EXIT_code = 61
-            ERROR_message = 'Unable to write to output file'  ;  GOSUB doexit
+
+        IF APPEND_mode THEN
+            WRITESEQ ALERT_msg APPEND TO f_DUP_file ELSE
+                EXIT_code = 61
+                ERROR_message = 'Unable to write to output file'  ;  GOSUB doexit
+            END
+        END ELSE
+            WRITESEQ ALERT_msg TO f_DUP_file ELSE
+                EXIT_code = 61
+                ERROR_message = 'Unable to write to output file'  ;  GOSUB doexit
+            END
         END
     END
 
