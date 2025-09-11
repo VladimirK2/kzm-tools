@@ -1101,7 +1101,10 @@ Enter the TAFC/TAFJ debugger.
                       | mask @FM/@VM/@SM as #fe / #fd / #fc
     -------------------------------------------------------------
     -a:<file>         | duplicate all "print" command outputs
-                      | to file
+                      | (to a new file)
+    -------------------------------------------------------------
+    -A:<file>         | duplicate all "print" command outputs
+                      | (append to file)
     -------------------------------------------------------------
 
 ## retcodes
@@ -1119,7 +1122,7 @@ Return codes supported by the interpreter:
 - 8  Script file - open error
 - 9  T24 credentials are mandatory for this operation
 - 10 Script file - non-printable characters found
-- 11 **RESERVE**
+- 11 Duplicate "-a" parameter
 - 12 Error opening SPF
 - 13 Error opening table on "read"/"delete" command
 - 14 Error opening F.MNEMONIC.COMPANY
