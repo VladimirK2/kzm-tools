@@ -43,12 +43,15 @@ A line starting with '#' is a comment.
 
 ### Registers (or macros)
 
-Enclosed into dollar symbols. Similar to variables but can be used anywhere (except commands and labels):
+Similar to variables but can be used anywhere (except commands and labels):
+Enclosed into dollar symbols - when used. When assigned - no dollar symbols required.
 
+    # assign
     move
         abc
         const
             Hello
+    # use
     print
         $abc$ World!
         $abc$$abc$$abc$
@@ -545,6 +548,10 @@ Form a list from dynamic array.
 Output:
 
     REC1 / REC2 / REC3
+
+##### Note
+
+*Numbered lists are not supported.*
 
 #### move
 
@@ -1148,8 +1155,8 @@ Return codes supported by the interpreter:
 - 34 No updates specified
 - 35 Unable to open $NAU file
 - 36 $NAU record exists, unable to continue
-- 37 Unable to write to $NAU file
-- 38 Unable to delete a record
+- 37 Write to $NAU file failed
+- 38 Record delete failed
 - 39 OFS error
 - 40 OFS.SOURCE is mandatory for this operation
 - 41 SELECT error
@@ -1162,7 +1169,7 @@ Return codes supported by the interpreter:
 - 48 Uppercase macro can not be reassigned
 - 49 Error opening F.USER.SIGN.ON.NAME
 - 50 Not valid T24 login name
-- 51 Unable to write to LIVE file
+- 51 Write to LIVE file failed
 - 52 Cancelled by user
 - 53 Forbidden to redefine internal registers
 - 54 Wrong syntax
