@@ -8,7 +8,7 @@ PROGRAM tafcj
     $INSERT I_F.OFS.SOURCE
     $INSERT I_F.OFS.REQUEST.DETAIL
 
-    CRT 'tafcj script interpreter 1.2.5'
+    CRT 'tafcj script interpreter 1.2.6'
 
     GOSUB initvars
     GOSUB parseparams
@@ -167,7 +167,7 @@ initvars:
     RECORD_curr_init = ''
     RECORD_id_curr = ''
     RECORD_is_new = @FALSE
-    REC_STAT_posn = -1
+    REC_STAT_posn = 0
 
     SCRIPT_folder = ''
     SCRIPT_file = ''
@@ -762,6 +762,16 @@ xeccommit:
     BEGIN CASE
 
     CASE commit_mode EQ 'RAW'
+
+        IF REC_STAT_posn THEN
+            IF NOT(RECORD_curr<REC_STAT_posn + 1>) THEN RECORD_curr<REC_STAT_posn + 1> = 1
+
+            curr_file = FILE_fname_list<FILE_no_curr>
+            IF RIGHT(curr_file, 4) EQ '$NAU' OR RIGHT(curr_file, 4) EQ '$HIS' THEN NULL
+            ELSE
+                IF NOT(RECORD_curr<REC_STAT_posn + 4>) THEN RECORD_curr<REC_STAT_posn + 4> = RECORD_curr<REC_STAT_posn + 2>
+            END
+        END
 
         WRITE RECORD_curr TO FILE_handle_list(FILE_no_curr), RECORD_id_curr ON ERROR
             ERROR_message = 'Unable to write to ': FILE_fname_list<FILE_no_curr>
@@ -1837,7 +1847,6 @@ xecread:
         FIND 'LOCAL.REF' IN DICT_list(FILE_no_curr) SETTING LOCREF_posn ELSE LOCREF_posn = 0
     END
 
-
     RECORD_is_new = @FALSE
     READ RECORD_curr FROM FILE_handle_list(FILE_no_curr), RECORD_id_curr ELSE
         RECORD_is_new = @TRUE
@@ -1869,6 +1878,7 @@ xecrunofs:
     DEL_on_err = @FALSE
     FAIL_on_err = @FALSE
 
+    cmds_qty = 0
     LOOP
         cmds_qty ++
         GOSUB ygetnextline
