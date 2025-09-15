@@ -8,7 +8,7 @@ PROGRAM tafcj
     $INSERT I_F.OFS.SOURCE
     $INSERT I_F.OFS.REQUEST.DETAIL
 
-    CRT 'tafcj script interpreter 1.2.6'
+    CRT 'tafcj script interpreter 1.2.7'
 
     GOSUB initvars
     GOSUB parseparams
@@ -44,19 +44,17 @@ doexit:
         CRT INFO_list
     END
 
-    IF EXIT_code NE 2 THEN
-        CRT '[INFO] ' : SCRIPT_folder : DIR_DELIM_CH : SCRIPT_file : ' finished' :
+    CRT '[INFO] ' : SCRIPT_folder : DIR_DELIM_CH : SCRIPT_file : ' finished' :
 
-        IF EXIT_code EQ 0 THEN CRT ' successfully'
-        ELSE
-            CRT ''
-            CRT '[ERROR] ' : ERROR_message
-            CRT 'Exit code: ' : EXIT_code
-            IF SCRIPT_line_no GT 0 THEN CRT 'Script line: ' : SCRIPT_line_no
-        END
-
-        CRT 'Elapsed time: ' : FMT(TIMESTAMP() - START_time, 'R2') : ' s.'
+    IF EXIT_code EQ 0 THEN CRT ' successfully'
+    ELSE
+        CRT ''
+        CRT '[ERROR] ' : ERROR_message
+        CRT 'Exit code: ' : EXIT_code
+        IF SCRIPT_line_no GT 0 THEN CRT 'Script line: ' : SCRIPT_line_no
     END
+
+    CRT 'Elapsed time: ' : FMT(TIMESTAMP() - START_time, 'R2') : ' s.'
 
 * otherwise infinite loop in WORLD.DISPLAY.b on EX invocation
     GTSACTIVE = ''
@@ -1147,8 +1145,22 @@ xecmove:
 
         CASE eval_keyword EQ 'subr'
             subr_name = FIELD(eval_cmd, ' ', 1)
+
+            subr_info = ''
+            cmp_or_not = CALLC JBASESubroutineExist(subr_name, subr_info)
+* cmp_or_not returns 0.0 under TAFJ
+            IF TAFJ_on THEN rezt_to_check = '0.0_Subroutine'
+            ELSE rezt_to_check = '1_'
+
+            IF cmp_or_not : '_' : subr_info NE rezt_to_check THEN
+                ERROR_message = 'Subroutine ' : subr_name : ' does not exist'
+                EXIT_code = 2
+                GOSUB doexit
+            END
+
             data_in = FIELD(eval_cmd, ' ', 2, 9999)
-            CALL @subr_name(data_out, data_in)     ;* TODO check if exists
+            CALL @subr_name(data_out, data_in)
+
             MACRO_value = data_out
             GOSUB ysetmacro
 
@@ -1852,10 +1864,10 @@ xecread:
         RECORD_is_new = @TRUE
         RECORD_curr = ''
         IF REC_STAT_posn THEN
-            RECORD_curr<REC_STAT_posn> = ''      ;*  TODO update on commit
+            RECORD_curr<REC_STAT_posn> = ''
             RECORD_curr<REC_STAT_posn + 1> = 0   ;* CURR.NO; to be incremented on commit
-            RECORD_curr<REC_STAT_posn + 2> = '42_TODO'   ;* INPUTTER  TODO update on LIVE/INAU commit
-            RECORD_curr<REC_STAT_posn + 3> = OCONV(DATE(), 'DG')[3,6] : OCONV(OCONV(TIME(), 'MT'), 'MCC;:;')  ;* DATE.TIME TODO update on commit
+            RECORD_curr<REC_STAT_posn + 2> = '42_TODO'   ;* INPUTTER
+            RECORD_curr<REC_STAT_posn + 3> = OCONV(DATE(), 'DG')[3,6] : OCONV(OCONV(TIME(), 'MT'), 'MCC;:;')  ;* DATE.TIME
             RECORD_curr<REC_STAT_posn + 4> = ''  ;* AUTHORISER
             RECORD_curr<REC_STAT_posn + 5> = COMPANY_curr  ;*  CO.CODE
             RECORD_curr<REC_STAT_posn + 6> = 1  ;* DEPT.CODE
