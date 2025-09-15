@@ -13,6 +13,13 @@ TAFCJ script allows conditional update of data records. It's called "TAFCJ" beca
 Yes, it uses OFS to update a record (to be exact - OFS.BULK.MANAGER). Firstly the full record image is written to $NAU file with IHLD status; then OFS with "I" function and zero authorisation is performed (can be other update options - leave in INAU or IHLD, for example). (Note: if record in \$NAU file exists already, fatal error will be raised.)
 In case of OFS error IHLD record is deleted.
 
+## Again, why use it?
+
+- Changes can be applied to same data records by different developers without overwriting the full record.
+- Easy to store scripts in git; CI/CD can be built over it.
+- Some TAFJ problems are corrected in the script interpreter - e.g. SEQS() function absense etc.
+- Finally, no need in DBTools or JED when certain standard scripts are available.
+
 ## How to run
 
 Minimum set of parameters:
@@ -1120,7 +1127,7 @@ Return codes supported by the interpreter:
 
 - 0  success
 - 1  unknown error
-- 2  **RESERVE**
+- 2  Subroutine does not exist (in move ... subr)
 - 3  Error opening OFS.SOURCE
 - 4  OFS.SOURCE @ID not found
 - 5  non-TELNET OFS.SOURCE
