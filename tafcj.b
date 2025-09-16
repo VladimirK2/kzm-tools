@@ -8,7 +8,7 @@ PROGRAM tafcj
     $INSERT I_F.OFS.SOURCE
     $INSERT I_F.OFS.REQUEST.DETAIL
 
-    CRT 'tafcj script interpreter 1.2.7'
+    CRT 'tafcj script interpreter 1.2.8'
 
     GOSUB initvars
     GOSUB parseparams
@@ -117,6 +117,8 @@ initvars:
 
     DIM FILE_handle_list(1)                     ;* will expand dynamically
     MAT FILE_handle_list = ''
+    DIM DICT_handle_list(1)                     ;* will expand dynamically
+    MAT DICT_handle_list = ''
     FILE_fname_list = 'F.SPF'
     FILE_no_curr = 1
     FIRST_space = @FALSE   ;* if we had leading space(s) in script line before trimming
@@ -1195,7 +1197,7 @@ xecmove:
             FUNC_args = '_DATE_TIME_FILEINFO_GETCWD_INPUT_TIMEDATE_TIMESTAMP_UNIQUEKEY_'
 * 1 arg
             FUNC_args<2> = '_ABS_ABSS_ALPHA_BYTELEN_CHAR_CHARS_DIR_DOWNCASE_DQUOTE_DROUND_DTX_GETENV_LEN_LENS_RND_INPUT_INT_ISALPHA_ISALNUM_ISCNTRL_ISDIGIT_ISLOWER_'
-            FUNC_args<2> := 'ISPRINT_ISSPACE_ISUPPER_LOWER_MAXIMUM_MINIMUM_NEG_NEGS_NOT_NOTS_NUM_NUMS_PUTENV_RAISE_SENTENCE_SEQ_SEQS_SORT_SPACE_SPACES_SQRT_SQUOTE_'
+            FUNC_args<2> := 'ISPRINT_ISSPACE_ISUPPER_ITYPE_LOWER_MAXIMUM_MINIMUM_NEG_NEGS_NOT_NOTS_NUM_NUMS_PUTENV_RAISE_SENTENCE_SEQ_SEQS_SORT_SPACE_SPACES_SQRT_SQUOTE_'
             FUNC_args<2> := 'SUM_SYSTEM_TRIM_UPCASE_XTD_'
 * 2 args
             FUNC_args<3> = '_ADDS_ANDS_CATS_CHANGETIMESTAMP_COUNT_COUNTS_DCOUNT_DEL_DIV_DIVS_DROUND_EQ_EQS_EXTRACT_FADD_FDIV_FIND_FINDSTR_FMUL_FMT_FMTS_FOLD_FSUB_'
@@ -1481,6 +1483,35 @@ xecmove:
 
             CASE func_name EQ 'ISUPPER'
                 MACRO_value = ISUPPER(args_list(1))
+
+            CASE func_name EQ 'ITYPE'
+                IF DICT_handle_list(FILE_no_curr) EQ '' THEN
+                    ERROR_message = 'File has no dictionary'
+                    EXIT_code = 63
+                    GOSUB doexit
+                END
+
+                save_at_record = @RECORD
+                save_at_filename = @FILENAME
+                @FILENAME = FILE_fname_list<FILE_no_curr>
+                @RECORD = RECORD_curr
+                READ i_desc FROM DICT_handle_list(FILE_no_curr), args_list(1) ELSE
+                    ERROR_message = 'I-descriptor ' : args_list(1) : ' does not exist'
+                    EXIT_code = 64
+                    GOSUB doexit
+                END
+
+                MACRO_value = ITYPE(i_desc)
+                IF LEFT(MACRO_value, 22) EQ 'Itype failed with def:' THEN
+                    ALERT_msg = MACRO_value
+                    GOSUB yprocalertmsg
+                    ERROR_message = ALERT_msg
+                    EXIT_code = 65
+                    GOSUB doexit
+                END
+
+                @RECORD = save_at_record
+                @FILENAME = save_at_filename
 
             CASE func_name EQ 'LE'
                 MACRO_value = (args_list(1) LE args_list(2))
@@ -1848,6 +1879,7 @@ xecread:
 
         DIM DICT_list(FILE_no_curr)
         DIM DICT_list_lref(FILE_no_curr)
+        DIM DICT_handle_list(FILE_no_curr)
         GOSUB ygetdict   ;*  $DICT$, $LREF$ (25, 26) are set there
 
     END ELSE
@@ -2167,12 +2199,12 @@ ygetdict:
 
     dict_sel_list = ''    ;   dict_sel_list_lref = ''
 
-    OPEN 'DICT', FILE_fname_list<FILE_no_curr> TO f_dict THEN
+    OPEN 'DICT', FILE_fname_list<FILE_no_curr> TO DICT_handle_list(FILE_no_curr) THEN
 
-        SELECT f_dict TO sel_dict
+        SELECT DICT_handle_list(FILE_no_curr) TO sel_dict
         LOOP
             WHILE READNEXT dict_id FROM sel_dict DO
-            READ r_dict FROM f_dict, dict_id ELSE CONTINUE
+            READ r_dict FROM DICT_handle_list(FILE_no_curr), dict_id ELSE CONTINUE
 
             dict_type = r_dict<1>
             BEGIN CASE
