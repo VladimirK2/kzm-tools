@@ -955,9 +955,9 @@ The user has to decide what to do with "0" in \$OFSCOMMIT\$. There are cases whe
 
 Output:
 
-    [INFO] 19:46:55 15 MAY 2024
+    [INFO] 19:46:55 15 SEP 2025
     [INFO] Going to sleep 5 seconds
-    [INFO] 19:47:00 15 MAY 2024
+    [INFO] 19:47:00 15 SEP 2025
 
 #### out
 
@@ -1107,9 +1107,13 @@ Enter the TAFC/TAFJ debugger.
                       | password is not - it will be prompted to
                       | be input manually
     -------------------------------------------------------------
+        T24 login and password are necessary only if the script
+    contains commands "runofs" or "commit" with LIVE / INAU mode.
+    -------------------------------------------------------------
     -var              | free-format parameter to supply a
                       | register value, e.g.:
-                      | -var:date:20170630 (mask spaces with #20)
+                      | -var:date:20250915
+                      | -var:name:John#20Dow (mask spaces with #20)
                       | -var:equ:A#3dB (mask "=" with #3d)
                       | -var:rec:SPF#3eSYSTEM (mask ">" with #3e)
                       | mask @FM/@VM/@SM as #fe / #fd / #fc
