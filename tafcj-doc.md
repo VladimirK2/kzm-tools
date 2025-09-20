@@ -1192,10 +1192,13 @@ Return codes supported by the interpreter:
 - 60 No file for area number N opened for output
 - 61 Error writing to output file
 - 62 Unable to clone from non-existing record
+- 63 Only one set of IF/THEN/ELSE allowed
+- 64 IF: THEN missing
+- 65 IF: ELSE missing
 
 ## stdmacros
 
-- \$BLANK\$ - empty string
+- {BLANK} - empty string
 - \$COMMA\$ - comma
 - \$DICT\$ - dyn. array with dictionary of table (populated by "read" command)
 - \$DIR\_DELIM\_CH\$ - DIR_DELIM_CH from JBC.h
@@ -1214,6 +1217,7 @@ Return codes supported by the interpreter:
 - \$OFSCOMMIT\$ - 1 or 0 depending on OFS.BULK.MANAGER result
 - \$OFSOUTPUT\$ - outgoing OFS message
 - \$PASSWORD\$ - user password
+- {PIPE} - "pipe" character
 - \$RECORD\$ - record read by "read" command (initial record; not one after amendments)
 - \$RPARENTH\$ - right parentheses (to use in move ... func if it's in parameters)
 - \$SM\$ - subvalue mark (ASCII 252)

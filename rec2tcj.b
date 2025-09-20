@@ -199,21 +199,20 @@ ProcRec:
 
     IF raw_mode THEN
         the_rec_out = the_rec
-        CHANGE @FM TO '$FM$' IN the_rec_out
-        CHANGE @VM TO '$VM$' IN the_rec_out
-        CHANGE @SM TO '$SM$' IN the_rec_out
-        CHANGE @TM TO '$TM$' IN the_rec_out
-        CHANGE CHAR(9) TO '$TAB$' IN the_rec_out
+        CHANGE @FM TO '{FM}' IN the_rec_out
+        CHANGE @VM TO '{VM}' IN the_rec_out
+        CHANGE @SM TO '{SM}' IN the_rec_out
+        CHANGE @TM TO '{TM}' IN the_rec_out
+        CHANGE CHAR(9) TO '{TAB}' IN the_rec_out
 
         FOR i_ch = 127 TO 250
             IF INDEX(the_rec_out, CHAR(i_ch), 1) THEN
-                CHANGE CHAR(i_ch) TO '$CHAR_' : i_ch : '$' IN the_rec_out
+                CHANGE CHAR(i_ch) TO '{CHAR_' : i_ch : '}' IN the_rec_out
 
                 FIND i_ch IN ext_chars SETTING dummy ELSE
                     the_output_HDR<-1> = 'move'
-                    the_output_HDR<-1> = '    CHAR_' : i_ch
-                    the_output_HDR<-1> = '    func'
-                    the_output_HDR<-1> = '        CHAR(' : i_ch : ')'
+                    the_output_HDR<-1> = '    {CHAR_' : i_ch : '}'
+                    the_output_HDR<-1> = '    func CHAR(' : i_ch : ')'
                     ext_chars<-1> = i_ch
                 END
             END
@@ -273,7 +272,7 @@ ProcRec:
 
         rec_output = ''
 
-        CHANGE CHAR(9) TO '$TAB$' IN the_rec
+        CHANGE CHAR(9) TO '{TAB}' IN the_rec
 
         the_qty = DCOUNT(dict_list, @FM)
         FOR i_fld = 1 TO the_qty
@@ -295,13 +294,12 @@ ProcRec:
 
             FOR i_ch = 127 TO 251
                 IF INDEX(fld_cont, CHAR(i_ch), 1) THEN
-                    CHANGE CHAR(i_ch) TO '$CHAR_' : i_ch : '$' IN fld_cont
+                    CHANGE CHAR(i_ch) TO '{CHAR_' : i_ch : '}' IN fld_cont
 
                     FIND i_ch IN ext_chars SETTING dummy ELSE
                         the_output_HDR<-1> = 'move'
-                        the_output_HDR<-1> = '    CHAR_' : i_ch
-                        the_output_HDR<-1> = '    func'
-                        the_output_HDR<-1> = '        CHAR(' : i_ch : ')'
+                        the_output_HDR<-1> = '    {CHAR_' : i_ch : '}'
+                        the_output_HDR<-1> = '    func CHAR(' : i_ch : ')'
                         ext_chars<-1> = i_ch
                     END
                 END
@@ -315,7 +313,7 @@ ProcRec:
                 a_chunk_trimmed = TRIM(a_chunk, ' ', 'T')
                 trail_sp_qty = LEN(a_chunk) - LEN(a_chunk_trimmed)
                 FOR i_space = 1 TO trail_sp_qty
-                    a_chunk_trimmed := '$SPACE$'
+                    a_chunk_trimmed := '{SPACE}'
                 NEXT i_space
 
                 rec_output<-1> = fld_name : ':' : mv_posn : ':' : sv_posn : '=' : a_chunk_trimmed
