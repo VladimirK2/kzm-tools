@@ -8,7 +8,7 @@ PROGRAM tafcj
     $INSERT I_F.OFS.SOURCE
     $INSERT I_F.OFS.REQUEST.DETAIL
 
-    CRT 'tafcj script interpreter 1.2.9'
+    CRT 'tafcj script interpreter 1.3.0'
 
     GOSUB initvars
     GOSUB parseparams
@@ -122,18 +122,39 @@ initvars:
     FIRST_space = @FALSE   ;* if we had leading space(s) in script line before trimming
     FLD_name = ''  ;  FLD_posn = ''  ;  IS_lref = @FALSE  ;   LREF_posn = 0  ;   LOCREF_posn = 0
 
+* funcs with no args
+    FUNC_args = '_DATE_TIME_FILEINFO_GETCWD_INPUT_TIMEDATE_TIMESTAMP_UNIQUEKEY_'
+* 1 arg
+    FUNC_args<2> = '_ABS_ABSS_ALPHA_BYTELEN_CHAR_CHARS_DIR_DOWNCASE_DQUOTE_DROUND_DTX_GETENV_LEN_LENS_RND_INPUT_INT_ISALPHA_ISALNUM_ISCNTRL_ISDIGIT_ISLOWER_'
+    FUNC_args<2> := 'ISPRINT_ISSPACE_ISUPPER_LOWER_MAXIMUM_MINIMUM_NEG_NEGS_NOT_NOTS_NUM_NUMS_PUTENV_RAISE_SENTENCE_SEQ_SEQS_SORT_SPACE_SPACES_SQRT_SQUOTE_'
+    FUNC_args<2> := 'SUM_SYSTEM_TRIM_UPCASE_XTD_'
+* 2 args
+    FUNC_args<3> = '_ADDS_ANDS_CATS_CHANGETIMESTAMP_COUNT_COUNTS_DCOUNT_DEL_DIV_DIVS_DROUND_EQ_EQS_EXTRACT_FADD_FDIV_FIND_FINDSTR_FMUL_FMT_FMTS_FOLD_FSUB_'
+    FUNC_args<3> := 'GE_GES_GT_ICONV_ICONVS_LE_LEFT_LES_LOCALDATE_LOCALTIME_LT_MATCHES_MOD_MODS_MULS_NE_NES_OCONV_OCONVS_ORS_PWR_REGEXP_RIGHT_SADD_SDIV_SMUL_'
+    FUNC_args<3> := 'STR_STRS_SSUB_SUBS_TRIM_'
+* 3 args
+    FUNC_args<4> =  '_CHANGE_CONVERT_DEL_EREPLACE_EXTRACT_FIELD_FIELDS_FIND_FINDSTR_IFS_INDEX_INS_MAKETIMESTAMP_MATCHFIELD_REPLACE_SPLICE_SUBSTRINGS_'
+    FUNC_args<4> := 'TIMEDIFF_TRIM_'
+* 4 args
+    FUNC_args<5> = '_DEL_EREPLACE_EXTRACT_FIELD_FIELDS_INS_REPLACE_TRANS_'
+* 5 args
+    FUNC_args<6> = '_EREPLACE_INS_REPLACE_'
+
+
     INFO_list = ''
     is_EOF = @FALSE
 
     LBL_list = ''  ;  LBL_posn_list = ''  ;  LBL_togo = ''
 
-    MACRO_name_list = 'TODAY' :@FM: 'LCCY' :@FM: 'ID.COMPANY' :@FM: 'FM' :@FM: 'VM' :@FM: 'SM' :@FM: 'TM' :@FM: 'SPACE' :@FM: 'BLANK' :@FM: 'RECORD'
-    MACRO_name_list := @FM: 'EXECSCREEN' :@FM: 'EXECRETCODE' :@FM: 'EXECRETDATA' :@FM: 'EXECRETLIST' :@FM: 'LF' :@FM: 'TAB' :@FM: 'DIR_DELIM_CH'
-    MACRO_name_list := @FM: 'COMMA' :@FM: 'LPARENTH' :@FM: 'RPARENTH' :@FM: 'USERNAME' :@FM: 'PASSWORD' :@FM: 'OFSCOMMIT' :@FM: 'OFSOUTPUT'
+    MACRO_name_list = '{TODAY}' :@FM: '{LCCY}' :@FM: '{ID.COMPANY}' :@FM: '{FM}' :@FM: '{VM}' :@FM: '{SM}' :@FM: '{TM}' :@FM: '{SPACE}' :@FM: '{BLANK}' :@FM: '{RECORD}'
+    MACRO_name_list := @FM: '{EXECSCREEN}' :@FM: '{EXECRETCODE}' :@FM: '{EXECRETDATA}' :@FM: '{EXECRETLIST}' :@FM: '{LF}' :@FM: '{TAB}' :@FM: '{DIR_DELIM_CH}'
+    MACRO_name_list := @FM: '{COMMA}' :@FM: '{LPARENTH}' :@FM: '{RPARENTH}' :@FM: '{USERNAME}' :@FM: '{PASSWORD}' :@FM: '{OFSCOMMIT}' :@FM: '{OFSOUTPUT}'
 * 25th - ...
-    MACRO_name_list := @FM: 'DICT' :@FM: 'LREF' :@FM: 'NEWRECORD' :@FM: 'NUMSEL'
+    MACRO_name_list := @FM: '{DICT}' :@FM: '{LREF}' :@FM: '{NEWRECORD}' :@FM: '{NUMSEL}' :@FM: '{PIPE}'
 
-    DIM MACRO_list(DCOUNT(MACRO_name_list, @FM))     ;* will expand dynamically
+    MACRO_sys_qty = DCOUNT(MACRO_name_list, @FM)
+
+    DIM MACRO_list(MACRO_sys_qty)     ;* will expand dynamically
     MAT MACRO_list = ''
     MACRO_name = ''
     MACRO_value = ''
@@ -150,6 +171,7 @@ initvars:
     MACRO_list(19) = '('
     MACRO_list(20) = ')'
     MACRO_list(27) = -1    ;*  avoid accidental usage before read command
+    MACRO_list(29) = '|'
 
     OFS_msg = ''  ;  FAIL_on_err = @FALSE  ;  DEL_on_err = @FALSE
     OFS_commit_ok = @FALSE  ;  OFS_output = ''
@@ -1099,598 +1121,664 @@ xecmove:
 
         GOSUB ygetnextline
         GOSUB ycheckcmdsyntax
-        eval_keyword = SCRIPT_line
+        eval_list = SCRIPT_line
 
-        FIND eval_keyword IN 'const' :@FM: 'field' :@FM: 'func' :@FM: 'subr' SETTING a_dummy ELSE
-            ERROR_message = 'Command "{1}": keyword "{2}" is not supported'
-            CHANGE '{1}' TO CMD_line IN ERROR_message
-            CHANGE '{2}' TO eval_keyword IN ERROR_message
-            EXIT_code = 43
-            GOSUB doexit
-        END
+        CHANGE '|' TO @FM IN eval_list
+        eval_qty = DCOUNT(eval_list, @FM)
 
-        GOSUB ygetnextline
-        GOSUB ycheckcmdsyntax
+        DIM eval_data(eval_qty)
+        MAT eval_data = ''
 
-        IF eval_keyword NE 'func' THEN
-            macro_qty = INMAT(MACRO_list)
-            FOR i = 1 TO macro_qty
-                macro_spec = '$' : MACRO_name_list<i> : '$'
-                macro_val = MACRO_list(i)
-                IF INDEX(SCRIPT_line, macro_spec, 1) THEN CHANGE macro_spec TO macro_val IN SCRIPT_line
-            NEXT i
-        END
-        eval_cmd = SCRIPT_line
+        FOR i_eval = 1 TO eval_qty
+            eval_cmd = TRIM(eval_list<i_eval>, ' ', 'B')
+            eval_keyword = DOWNCASE( FIELD(eval_cmd, ' ', 1) )
+            eval_body = FIELD(eval_cmd, ' ', 2, 999999)
 
-        IF CMD_line EQ 'default' THEN   ;* don't do it if it's already assigned
-            FIND MACRO_name IN MACRO_name_list SETTING posn ELSE posn = 0
-            IF posn GT 0 THEN CONTINUE
-        END
+            FIND eval_keyword IN 'const' :@FM: 'field' :@FM: 'func' :@FM: 'subr' :@FM: 'if' SETTING a_dummy ELSE
+                ERROR_message = 'Command "{1}": keyword "{2}" is not supported'
+                CHANGE '{1}' TO CMD_line IN ERROR_message
+                CHANGE '{2}' TO eval_keyword IN ERROR_message
+                EXIT_code = 43
+                GOSUB doexit
+            END
 
-        BEGIN CASE
-        CASE eval_keyword EQ 'const'
+            IF eval_keyword NE 'func' AND eval_keyword NE 'if' THEN   ;* parse parameters later - could be commas, spaces or parentheses in data
+                FOR i_macro = i_eval - 1 TO 1 STEP -1  ;* replace @11 earlier than @1
+                    CHANGE '@' : i_macro TO eval_data(i_macro) IN eval_body
+                NEXT i_macro
 
-            MACRO_value = eval_cmd
-            GOSUB ysetmacro
+                to_be_replaced = eval_body
+                GOSUB yreplacemacros
+                eval_body = to_be_replaced
+            END
 
-        CASE eval_keyword EQ 'field'
-            FLD_name = eval_cmd
-            GOSUB yfindfield
+            skip_cmd = @FALSE
 
-            IF IS_lref THEN
-                MACRO_value = RECORD_curr<LOCREF_posn, LREF_posn>
-            END ELSE MACRO_value = RECORD_curr<FLD_posn>
-            GOSUB ysetmacro
+            IF CMD_line EQ 'default' THEN   ;* don't do it if it's already assigned
+                FIND MACRO_name IN MACRO_name_list SETTING posn ELSE posn = 0
+                IF posn GT 0 THEN skip_cmd = @TRUE  ;   BREAK
+            END
 
-        CASE eval_keyword EQ 'subr'
-            subr_name = FIELD(eval_cmd, ' ', 1)
+            BEGIN CASE
 
-            subr_info = ''
-            cmp_or_not = CALLC JBASESubroutineExist(subr_name, subr_info)
+            CASE eval_keyword EQ 'if'   ;* e.g.  if @1 eq @2 then @3 else {myvar}
+
+                if_then_else = TRIM(eval_body, ' ', 'R')
+                CHANGE ' ' TO @FM IN if_then_else
+
+                IF DCOUNT(if_then_else, @FM) NE 7 THEN ERROR_message = 'Only one set of IF/THEN/ELSE allowed'  ;  EXIT_code = 63  ;  GOSUB doexit
+
+                IF DOWNCASE(if_then_else<4>) NE 'then' THEN ERROR_message = 'IF: THEN missing'  ;  EXIT_code = 64  ;  GOSUB doexit
+                IF DOWNCASE(if_then_else<6>) NE 'else' THEN ERROR_message = 'IF: ELSE missing'  ;  EXIT_code = 65  ;  GOSUB doexit
+
+                if_one = if_then_else<1>
+                if_two = if_then_else<3>
+                if_then = if_then_else<5>
+                if_else = if_then_else<7>
+
+                FOR i_macro = i_eval - 1 TO 1 STEP -1
+                    CHANGE '@' : i_macro TO eval_data(i_macro) IN if_one
+                    CHANGE '@' : i_macro TO eval_data(i_macro) IN if_two
+                    CHANGE '@' : i_macro TO eval_data(i_macro) IN if_then
+                    CHANGE '@' : i_macro TO eval_data(i_macro) IN if_else
+                NEXT i_macro
+
+                to_be_replaced = if_one
+                GOSUB yreplacemacros
+                if_one = to_be_replaced
+                to_be_replaced = if_two
+                GOSUB yreplacemacros
+                if_two = to_be_replaced
+                to_be_replaced = if_then
+                GOSUB yreplacemacros
+                if_then = to_be_replaced
+                to_be_replaced = if_else
+                GOSUB yreplacemacros
+                if_else = to_be_replaced
+
+                if_oper = DOWNCASE(if_then_else<2>)
+
+                BEGIN CASE
+                CASE if_oper EQ 'eq'
+                    IF if_one EQ if_two THEN if_or_then = @TRUE
+                    ELSE if_or_then = @FALSE
+                CASE if_oper EQ 'ne'
+                    IF if_one NE if_two THEN if_or_then = @TRUE
+                    ELSE if_or_then = @FALSE
+                CASE if_oper EQ 'gt'
+                    IF if_one GT if_two THEN if_or_then = @TRUE
+                    ELSE if_or_then = @FALSE
+                CASE if_oper EQ 'ge'
+                    IF if_one GE if_two THEN if_or_then = @TRUE
+                    ELSE if_or_then = @FALSE
+                CASE if_oper EQ 'lt'
+                    IF if_one LT if_two THEN if_or_then = @TRUE
+                    ELSE if_or_then = @FALSE
+                CASE if_oper EQ 'le'
+                    IF if_one LE if_two THEN if_or_then = @TRUE
+                    ELSE if_or_then = @FALSE
+                CASE if_oper EQ 'lk'
+                    IF if_one MATCHES if_two THEN if_or_then = @TRUE
+                    ELSE if_or_then = @FALSE
+                CASE if_oper EQ 'ul'
+                    IF NOT(if_one MATCHES if_two) THEN if_or_then = @TRUE
+                    ELSE if_or_then = @FALSE
+
+                END CASE
+
+                IF if_or_then THEN eval_out = if_then
+                ELSE eval_out = if_else
+
+            CASE eval_keyword EQ 'const'
+                eval_out = eval_body
+
+            CASE eval_keyword EQ 'field'
+                FLD_name = eval_body
+                GOSUB yfindfield
+
+                IF IS_lref THEN
+                    eval_out = RECORD_curr<LOCREF_posn, LREF_posn>
+                END ELSE eval_out = RECORD_curr<FLD_posn>
+
+            CASE eval_keyword EQ 'subr'
+                subr_name = FIELD(eval_body, ' ', 1)
+
+                subr_info = ''
+                cmp_or_not = CALLC JBASESubroutineExist(subr_name, subr_info)
 * cmp_or_not returns 0.0 under TAFJ
-            IF TAFJ_on THEN rezt_to_check = '0.0_Subroutine'
-            ELSE rezt_to_check = '1_'
+                IF TAFJ_on THEN rezt_to_check = '0.0_Subroutine'
+                ELSE rezt_to_check = '1_'
 
-            IF cmp_or_not : '_' : subr_info NE rezt_to_check THEN
-                ERROR_message = 'Subroutine ' : subr_name : ' does not exist'
-                EXIT_code = 2
-                GOSUB doexit
-            END
-
-            data_in = FIELD(eval_cmd, ' ', 2, 9999)
-            CALL @subr_name(data_out, data_in)
-
-            MACRO_value = data_out
-            GOSUB ysetmacro
-
-        CASE eval_keyword EQ 'func'
-
-            parn_open = INDEX(eval_cmd, '(', 1)  ;  parn_close = INDEX(eval_cmd, ')', 1)
-
-            IF NOT(parn_open) OR NOT(parn_close) THEN
-                ERROR_message = 'One or both parentheses missing in function definition'
-                EXIT_code = 45
-                GOSUB doexit
-            END
-
-            IF INDEX(eval_cmd, '(', 2) OR INDEX(eval_cmd, ')', 2) THEN
-                ERROR_message = 'Only one set of parentheses allowed in function definition'
-                EXIT_code = 46
-                GOSUB doexit
-            END
-
-            func_name = TRIM(eval_cmd[1, parn_open - 1], ' ', 'B')
-            args_raw_list = eval_cmd[parn_open + 1, (parn_close - 1 - parn_open)]
-            BEGIN CASE
-            CASE TRIM(args_raw_list, ' ', 'B') EQ ''
-                args_qty = 0
-            CASE INDEX(args_raw_list, ',', 1)
-                args_qty = DCOUNT(args_raw_list, ',')
-            CASE 1
-                args_qty = 1
-            END CASE
-
-* no args
-            FUNC_args = '_DATE_TIME_FILEINFO_GETCWD_INPUT_TIMEDATE_TIMESTAMP_UNIQUEKEY_'
-* 1 arg
-            FUNC_args<2> = '_ABS_ABSS_ALPHA_BYTELEN_CHAR_CHARS_DIR_DOWNCASE_DQUOTE_DROUND_DTX_GETENV_LEN_LENS_RND_INPUT_INT_ISALPHA_ISALNUM_ISCNTRL_ISDIGIT_ISLOWER_'
-            FUNC_args<2> := 'ISPRINT_ISSPACE_ISUPPER_LOWER_MAXIMUM_MINIMUM_NEG_NEGS_NOT_NOTS_NUM_NUMS_PUTENV_RAISE_SENTENCE_SEQ_SEQS_SORT_SPACE_SPACES_SQRT_SQUOTE_'
-            FUNC_args<2> := 'SUM_SYSTEM_TRIM_UPCASE_XTD_'
-* 2 args
-            FUNC_args<3> = '_ADDS_ANDS_CATS_CHANGETIMESTAMP_COUNT_COUNTS_DCOUNT_DEL_DIV_DIVS_DROUND_EQ_EQS_EXTRACT_FADD_FDIV_FIND_FINDSTR_FMUL_FMT_FMTS_FOLD_FSUB_'
-            FUNC_args<3> := 'GE_GES_GT_ICONV_ICONVS_LE_LEFT_LES_LOCALDATE_LOCALTIME_LT_MATCHES_MOD_MODS_MULS_NE_NES_OCONV_OCONVS_ORS_PWR_REGEXP_RIGHT_SADD_SDIV_SMUL_'
-            FUNC_args<3> := 'STR_STRS_SSUB_SUBS_TRIM_'
-* 3 args
-            FUNC_args<4> =  '_CHANGE_CONVERT_DEL_EREPLACE_EXTRACT_FIELD_FIELDS_FIND_FINDSTR_IFS_INDEX_INS_MAKETIMESTAMP_MATCHFIELD_REPLACE_SPLICE_SUBSTRINGS_'
-            FUNC_args<4> := 'TIMEDIFF_TRIM_'
-* 4 args
-            FUNC_args<5> = '_DEL_EREPLACE_EXTRACT_FIELD_FIELDS_INS_REPLACE_TRANS_'
-* 5 args
-            FUNC_args<6> = '_EREPLACE_INS_REPLACE_'
-
-            macro_qty = INMAT(MACRO_list)
-            FOR i = 1 TO macro_qty
-                macro_spec = '$' : MACRO_name_list<i> : '$'
-                macro_val = MACRO_list(i)
-                IF INDEX(func_name, macro_spec, 1) THEN CHANGE macro_spec TO macro_val IN func_name
-            NEXT i
-
-            IF NOT(INDEX(FUNC_args<args_qty+1>, '_' : func_name : '_', 1)) THEN
-                ERROR_message = 'Function "{1}" not found in the list of functions with {2} parameter(s)'
-                CHANGE '{1}' TO func_name IN ERROR_message
-                CHANGE '{2}' TO args_qty IN ERROR_message
-                EXIT_code = 47
-                GOSUB doexit
-            END
-
-            DIM args_list(args_qty)
-            MAT args_list = ''
-
-            FOR i_arg = 1 TO args_qty
-                the_arg = TRIM(FIELD(args_raw_list, ',' , i_arg), ' ', 'B')   ;* keep spaces inside
-
-                macro_qty = INMAT(MACRO_list)
-                FOR i = 1 TO macro_qty
-                    macro_spec = '$' : MACRO_name_list<i> : '$'
-                    macro_val = MACRO_list(i)
-                    IF INDEX(the_arg, macro_spec, 1) THEN CHANGE macro_spec TO macro_val IN the_arg
-                NEXT i
-
-                args_list(i_arg) = the_arg
-
-            NEXT i_arg
-
-            BEGIN CASE
-            CASE func_name EQ 'ABS'
-                MACRO_value = ABS(args_list(1))
-
-            CASE func_name EQ 'ABSS'
-                MACRO_value = ABSS(args_list(1))
-
-            CASE func_name EQ 'ADDS'
-                MACRO_value = ADDS(args_list(1), args_list(2))
-
-            CASE func_name EQ 'ALPHA'
-                MACRO_value = ALPHA(args_list(1))
-
-            CASE func_name EQ 'ANDS'
-                MACRO_value = ANDS(args_list(1), args_list(2))
-
-            CASE func_name EQ 'BYTELEN'
-                MACRO_value = BYTELEN(args_list(1))
-
-            CASE func_name EQ 'CATS'
-                MACRO_value = CATS(args_list(1), args_list(2))
-
-            CASE func_name EQ 'CHANGE'
-                MACRO_value = CHANGE(args_list(1), args_list(2), args_list(3))
-
-            CASE func_name EQ 'CHANGETIMESTAMP'
-                MACRO_value = CHANGETIMESTAMP(args_list(1), args_list(2))
-
-            CASE func_name EQ 'CHAR'
-                MACRO_value = CHAR(args_list(1))
-
-            CASE func_name EQ 'CHARS'
-                MACRO_value = CHARS(args_list(1))
-
-            CASE func_name EQ 'CONVERT'
-                MACRO_value = CONVERT(args_list(1), args_list(2), args_list(3))
-
-            CASE func_name EQ 'COUNT'
-                MACRO_value = COUNT(args_list(1), args_list(2))
-
-            CASE func_name EQ 'COUNTS'
-                MACRO_value = COUNTS(args_list(1), args_list(2))
-
-            CASE func_name EQ 'DATE'
-                MACRO_value = DATE()
-
-            CASE func_name EQ 'DCOUNT'
-                MACRO_value = DCOUNT(args_list(1), args_list(2))
-
-            CASE func_name EQ 'DEL'
-                BEGIN CASE
-                CASE args_qty EQ 2
-                    DEL args_list(1)<args_list(2)>
-                CASE args_qty EQ 3
-                    DEL args_list(1)<args_list(2), args_list(3)>
-                CASE args_qty EQ 4
-                    DEL args_list(1)<args_list(2), args_list(3), args_list(4)>
-                END CASE
-                MACRO_value = args_list(1)
-
-            CASE func_name EQ 'DIR'
-                MACRO_value = DIR(args_list(1))
-
-            CASE func_name EQ 'DIV'
-                MACRO_value = DIV(args_list(1), args_list(2))
-
-            CASE func_name EQ 'DIVS'
-                MACRO_value = DIVS(args_list(1), args_list(2))
-
-            CASE func_name EQ 'DOWNCASE'
-                MACRO_value = DOWNCASE(args_list(1))
-
-            CASE func_name EQ 'DQUOTE'
-                MACRO_value = DQUOTE(args_list(1))
-
-            CASE func_name EQ 'DROUND'
-                IF args_qty EQ 2 THEN MACRO_value = DROUND(args_list(1), args_list(2))
-                ELSE MACRO_value = DROUND(args_list(1))
-
-            CASE func_name EQ 'DTX'
-                MACRO_value = DTX(args_list(1))
-
-            CASE func_name EQ 'EQ'
-                MACRO_value = (args_list(1) EQ args_list(2))
-
-            CASE func_name EQ 'EQS'
-                MACRO_value = EQS(args_list(1), args_list(2))
-
-            CASE func_name EQ 'EREPLACE'
-                BEGIN CASE
-                CASE args_qty EQ 3
-                    MACRO_value = EREPLACE(args_list(1), args_list(2), args_list(3))
-                CASE args_qty EQ 4
-                    MACRO_value = EREPLACE(args_list(1), args_list(2), args_list(3), args_list(4))
-                CASE args_qty EQ 5
-                    MACRO_value = EREPLACE(args_list(1), args_list(2), args_list(3), args_list(4), args_list(5))
-                END CASE
-
-            CASE func_name EQ 'EXTRACT'
-                BEGIN CASE
-                CASE args_qty EQ 2
-                    MACRO_value = EXTRACT(args_list(1), args_list(2))
-                CASE args_qty EQ 3
-                    MACRO_value = EXTRACT(args_list(1), args_list(2), args_list(3))
-                CASE args_qty EQ 4
-                    MACRO_value = EXTRACT(args_list(1), args_list(2), args_list(3), args_list(4))
-                END CASE
-
-            CASE func_name EQ 'FADD'
-                MACRO_value = FADD(args_list(1), args_list(2))
-
-            CASE func_name EQ 'FDIV'
-                MACRO_value = FDIV(args_list(1), args_list(2))
-
-            CASE func_name EQ 'FIELD'
-                IF args_qty EQ 3 THEN MACRO_value = FIELD(args_list(1), args_list(2), args_list(3))
-                ELSE MACRO_value = FIELD(args_list(1), args_list(2), args_list(3), args_list(4))
-
-            CASE func_name EQ 'FIELDS'
-                IF args_qty EQ 3 THEN MACRO_value = FIELDS(args_list(1), args_list(2), args_list(3))
-                ELSE MACRO_value = FIELDS(args_list(1), args_list(2), args_list(3), args_list(4))
-
-            CASE func_name EQ 'FILEINFO'
-                MACRO_value = FILEINFO(FILE_handle_list(FILE_no_curr), 1)
-
-            CASE func_name EQ 'FIND'
-                IF args_qty EQ 2 THEN
-                    FIND args_list(1) IN args_list(2) SETTING fm_posn, vm_posn, sm_posn ELSE
-                        fm_posn = -1
-                    END
-                END ELSE
-                    FIND args_list(1) IN args_list(2), args_list(3) SETTING fm_posn, vm_posn, sm_posn ELSE
-                        fm_posn = -1
-                    END
+                IF cmp_or_not : '_' : subr_info NE rezt_to_check THEN
+                    ERROR_message = 'Subroutine ' : subr_name : ' does not exist'
+                    EXIT_code = 2
+                    GOSUB doexit
                 END
 
-                IF fm_posn EQ -1 THEN MACRO_value = -1
-                ELSE MACRO_value = fm_posn :@FM: vm_posn :@FM: sm_posn
+                data_in = FIELD(eval_body, ' ', 2, 9999)
+                CALL @subr_name(data_out, data_in)
 
-            CASE func_name EQ 'FINDSTR'
-                IF args_qty EQ 2 THEN
-                    FINDSTR args_list(1) IN args_list(2) SETTING fm_posn, vm_posn, sm_posn ELSE
-                        fm_posn = -1
-                    END
-                END ELSE
-                    FINDSTR args_list(1) IN args_list(2), args_list(3) SETTING fm_posn, vm_posn, sm_posn ELSE
-                        fm_posn = -1
-                    END
+                eval_out = data_out
+
+            CASE eval_keyword EQ 'func'
+
+                parn_open = INDEX(eval_body, '(', 1)  ;  parn_close = INDEX(eval_body, ')', 1)
+
+                IF NOT(parn_open) OR NOT(parn_close) THEN
+                    ERROR_message = 'One or both parentheses missing in function definition'
+                    EXIT_code = 45
+                    GOSUB doexit
                 END
 
-                IF fm_posn EQ -1 THEN MACRO_value = -1
-                ELSE MACRO_value = fm_posn :@FM: vm_posn :@FM: sm_posn
-
-            CASE func_name EQ 'FMT'
-                MACRO_value = FMT(args_list(1), args_list(2))
-
-            CASE func_name EQ 'FMTS'
-                MACRO_value = FMTS(args_list(1), args_list(2))
-
-            CASE func_name EQ 'FMUL'
-                MACRO_value = FMUL(args_list(1), args_list(2))
-
-            CASE func_name EQ 'FOLD'
-                MACRO_value = FOLD(args_list(1), args_list(2))
-
-            CASE func_name EQ 'FSUB'
-                MACRO_value = FSUB(args_list(1), args_list(2))
-
-            CASE func_name EQ 'GE'
-                MACRO_value = (args_list(1) GE args_list(2))
-
-            CASE func_name EQ 'GES'
-                MACRO_value = GES(args_list(1), args_list(2))
-
-            CASE func_name EQ 'GETCWD'
-                IF GETCWD(MACRO_value) THEN NULL
-
-            CASE func_name EQ 'GETENV'
-                IF GETENV(args_list(1), MACRO_value) THEN NULL
-                ELSE MACRO_value = ''
-
-            CASE func_name EQ 'GT'
-                MACRO_value = (args_list(1) GT args_list(2))
-
-            CASE func_name EQ 'ICONV'
-                MACRO_value = ICONV(args_list(1), args_list(2))
-
-            CASE func_name EQ 'ICONVS'
-                MACRO_value = ICONVS(args_list(1), args_list(2))
-
-            CASE func_name EQ 'IFS'
-                MACRO_value = IFS(args_list(1), args_list(2), args_list(3))
-
-            CASE func_name EQ 'INDEX'
-                MACRO_value = INDEX(args_list(1), args_list(2), args_list(3))
-
-            CASE func_name EQ 'INPUT'
-                IF args_qty EQ 0 THEN
-                    INPUT MACRO_value
-                END ELSE
-                    INPUT MACRO_value FOR args_list(1) ELSE MACRO_value = ''
+                IF INDEX(eval_body, '(', 2) OR INDEX(eval_body, ')', 2) THEN
+                    ERROR_message = 'Only one set of parentheses allowed in function definition'
+                    EXIT_code = 46
+                    GOSUB doexit
                 END
 
-            CASE func_name EQ 'INS'
+                func_name = TRIM(eval_body[1, parn_open - 1], ' ', 'B')
+                args_raw_list = eval_body[parn_open + 1, (parn_close - 1 - parn_open)]
+
                 BEGIN CASE
-                CASE args_qty EQ 3
-                    INS args_list(1) BEFORE args_list(2)<args_list(3)>
-                CASE args_qty EQ 4
-                    INS args_list(1) BEFORE args_list(2)<args_list(3), args_list(4)>
-                CASE args_qty EQ 5
-                    INS args_list(1) BEFORE args_list(2)<args_list(3), args_list(4), args_list(5)>
-                END CASE
-                MACRO_value = args_list(2)
-
-            CASE func_name EQ 'INT'
-                MACRO_value = INT(args_list(1))
-
-            CASE func_name EQ 'ISALPHA'
-                MACRO_value = ISALPHA(args_list(1))
-
-            CASE func_name EQ 'ISALNUM'
-                MACRO_value = ISALNUM(args_list(1))
-
-            CASE func_name EQ 'ISCNTRL'
-                MACRO_value = ISCNTRL(args_list(1))
-
-            CASE func_name EQ 'ISDIGIT'
-                MACRO_value = ISDIGIT(args_list(1))
-
-            CASE func_name EQ 'ISLOWER'
-                MACRO_value = ISLOWER(args_list(1))
-
-            CASE func_name EQ 'ISPRINT'
-                MACRO_value = ISPRINT(args_list(1))
-
-            CASE func_name EQ 'ISSPACE'
-                MACRO_value = ISSPACE(args_list(1))
-
-            CASE func_name EQ 'ISUPPER'
-                MACRO_value = ISUPPER(args_list(1))
-
-            CASE func_name EQ 'LE'
-                MACRO_value = (args_list(1) LE args_list(2))
-
-            CASE func_name EQ 'LEFT'
-                MACRO_value = LEFT(args_list(1), args_list(2))
-
-            CASE func_name EQ 'LEN'
-                MACRO_value = LEN(args_list(1))
-
-            CASE func_name EQ 'LENS'
-                MACRO_value = LENS(args_list(1))
-
-            CASE func_name EQ 'LES'
-                MACRO_value = LES(args_list(1), args_list(2))
-
-            CASE func_name EQ 'LOCALDATE'
-                MACRO_value = LOCALDATE(args_list(1), args_list(2))
-
-            CASE func_name EQ 'LOCALTIME'
-                MACRO_value = LOCALTIME(args_list(1), args_list(2))
-
-            CASE func_name EQ 'LOWER'
-                MACRO_value = LOWER(args_list(1))
-
-            CASE func_name EQ 'LT'
-                MACRO_value = (args_list(1) LT args_list(2))
-
-            CASE func_name EQ 'MAKETIMESTAMP'
-                MACRO_value = MAKETIMESTAMP(args_list(1), args_list(2), args_list(3))
-
-            CASE func_name EQ 'MATCHES'
-                MACRO_value = (args_list(1) MATCHES args_list(2))
-
-            CASE func_name EQ 'MATCHFIELD'
-                MACRO_value = MATCHFIELD(args_list(1), args_list(2), args_list(3))
-
-            CASE func_name EQ 'MAXIMUM'
-                MACRO_value = MAXIMUM(args_list(1))
-
-            CASE func_name EQ 'MINIMUM'
-                MACRO_value = MINIMUM(args_list(1))
-
-            CASE func_name EQ 'MOD'
-                MACRO_value = MOD(args_list(1), args_list(2))
-
-            CASE func_name EQ 'MODS'
-                MACRO_value = MODS(args_list(1), args_list(2))
-
-            CASE func_name EQ 'MULS'
-                MACRO_value = MULS(args_list(1), args_list(2))
-
-            CASE func_name EQ 'NE'
-                MACRO_value = (args_list(1) NE args_list(2))
-
-            CASE func_name EQ 'NEG'
-                MACRO_value = NEG(args_list(1))
-
-            CASE func_name EQ 'NEGS'
-                MACRO_value = NEGS(args_list(1))
-
-            CASE func_name EQ 'NES'
-                MACRO_value = NES(args_list(1), args_list(2))
-
-            CASE func_name EQ 'NOT'
-                MACRO_value = NOT(args_list(1))
-
-            CASE func_name EQ 'NOTS'
-                MACRO_value = NOTS(args_list(1))
-
-            CASE func_name EQ 'NUM'
-                MACRO_value = NUM(args_list(1))
-
-            CASE func_name EQ 'NUMS'
-                MACRO_value = NUMS(args_list(1))
-
-            CASE func_name EQ 'OCONV'
-                MACRO_value = OCONV(args_list(1), args_list(2))
-
-            CASE func_name EQ 'OCONVS'
-                MACRO_value = OCONVS(args_list(1), args_list(2))
-
-            CASE func_name EQ 'ORS'
-                MACRO_value = ORS(args_list(1), args_list(2))
-
-            CASE func_name EQ 'PUTENV'
-                MACRO_value = PUTENV(args_list(1))
-
-            CASE func_name EQ 'PWR'
-                MACRO_value = PWR(args_list(1), args_list(2))
-
-            CASE func_name EQ 'RAISE'
-                MACRO_value = RAISE(args_list(1))
-
-            CASE func_name EQ 'REGEXP'
-                MACRO_value = REGEXP(args_list(1), args_list(2))
-
-            CASE func_name EQ 'REPLACE'
-                BEGIN CASE
-                CASE args_qty EQ 3
-                    MACRO_value = REPLACE(args_list(1), args_list(2); args_list(3))
-                CASE args_qty EQ 4
-                    MACRO_value = REPLACE(args_list(1), args_list(2), args_list(3); args_list(4))
-                CASE args_qty EQ 5
-                    MACRO_value = REPLACE(args_list(1), args_list(2), args_list(3), args_list(4); args_list(5))
+                CASE TRIM(args_raw_list, ' ', 'B') EQ ''
+                    args_qty = 0
+                CASE INDEX(args_raw_list, ',', 1)
+                    args_qty = DCOUNT(args_raw_list, ',')
+                CASE 1
+                    args_qty = 1
                 END CASE
 
-            CASE func_name EQ 'RIGHT'
-                MACRO_value = RIGHT(args_list(1), args_list(2))
+                to_be_replaced = func_name
+                GOSUB yreplacemacros
+                func_name = to_be_replaced
 
-            CASE func_name EQ 'RND'
-                MACRO_value = RND(args_list(1))
+                IF NOT(INDEX(FUNC_args<args_qty+1>, '_' : func_name : '_', 1)) THEN
+                    ERROR_message = 'Function "{1}" not found in the list of functions with {2} parameter(s)'
+                    CHANGE '{1}' TO func_name IN ERROR_message
+                    CHANGE '{2}' TO args_qty IN ERROR_message
+                    EXIT_code = 47
+                    GOSUB doexit
+                END
 
-            CASE func_name EQ 'SADD'
-                MACRO_value = SADD(args_list(1), args_list(2))
+                DIM args_list(args_qty)
+                MAT args_list = ''
 
-            CASE func_name EQ 'SDIV'
-                MACRO_value = SDIV(args_list(1), args_list(2))
+                FOR i_arg = 1 TO args_qty
+                    the_arg = TRIM(FIELD(args_raw_list, ',' , i_arg), ' ', 'B')   ;* keep spaces inside
 
-            CASE func_name EQ 'SENTENCE'
-                MACRO_value = SENTENCE(args_list(1))
+                    to_be_replaced = the_arg
+                    GOSUB yreplacemacros
+                    the_arg = to_be_replaced
 
-            CASE func_name EQ 'SEQ'
-                MACRO_value = SEQ(args_list(1))
+                    FOR i_macro = i_eval - 1 TO 1 STEP -1  ;* replace @11 earlier than @1
+                        CHANGE '@' : i_macro TO eval_data(i_macro) IN the_arg
+                    NEXT i_macro
 
-            CASE func_name EQ 'SEQS'
-                seqs_in = args_list(1)
-                GOSUB yseqsemu
-                MACRO_value = seqs_out
+                    args_list(i_arg) = the_arg
 
-            CASE func_name EQ 'SMUL'
-                MACRO_value = SMUL(args_list(1), args_list(2))
+                NEXT i_arg
 
-            CASE func_name EQ 'SORT'
-                MACRO_value = SORT(args_list(1))
-
-            CASE func_name EQ 'SPACE'
-                MACRO_value = SPACE(args_list(1))
-
-            CASE func_name EQ 'SPACES'
-                MACRO_value = SPACES(args_list(1))
-
-            CASE func_name EQ 'SPLICE'
-                MACRO_value = SPLICE(args_list(1), args_list(2), args_list(3))
-
-            CASE func_name EQ 'SQRT'
-                MACRO_value = SQRT(args_list(1))
-
-            CASE func_name EQ 'SSUB'
-                MACRO_value = SSUB(args_list(1), args_list(2))
-
-            CASE func_name EQ 'STR'
-                MACRO_value = STR(args_list(1), args_list(2))
-
-            CASE func_name EQ 'STRS'
-                MACRO_value = STRS(args_list(1), args_list(2))
-
-            CASE func_name EQ 'SUBS'
-                MACRO_value = SUBS(args_list(1), args_list(2))
-
-            CASE func_name EQ 'SQUOTE'
-                MACRO_value = SQUOTE(args_list(1))
-
-            CASE func_name EQ 'SUBSTRINGS'
-                MACRO_value = SUBSTRINGS(args_list(1), args_list(2), args_list(3))
-
-            CASE func_name EQ 'SUM'
-                MACRO_value = SUM(args_list(1))
-
-            CASE func_name EQ 'SYSTEM'
-                MACRO_value = SYSTEM(args_list(1))
-
-            CASE func_name EQ 'TIME'
-                MACRO_value = TIME()
-
-            CASE func_name EQ 'TIMEDATE'
-                MACRO_value = TIMEDATE()
-
-            CASE func_name EQ 'TIMEDIFF'
-                MACRO_value = TIMEDIFF(args_list(1), args_list(2), args_list(3))
-
-            CASE func_name EQ 'TIMESTAMP'
-                MACRO_value = TIMESTAMP()
-
-            CASE func_name EQ 'TRANS'
-                MACRO_value = TRANS(args_list(1), args_list(2), args_list(3), args_list(4))
-
-            CASE func_name EQ 'TRIM'
                 BEGIN CASE
-                CASE args_qty EQ 1
-                    MACRO_value = TRIM(args_list(1))
-                CASE args_qty EQ 2
-                    MACRO_value = TRIM(args_list(1), args_list(2))
-                CASE args_qty EQ 3
-                    MACRO_value = TRIM(args_list(1), args_list(2), args_list(3))
+                CASE func_name EQ 'ABS'
+                    eval_out = ABS(args_list(1))
+
+                CASE func_name EQ 'ABSS'
+                    eval_out = ABSS(args_list(1))
+
+                CASE func_name EQ 'ADDS'
+                    eval_out = ADDS(args_list(1), args_list(2))
+
+                CASE func_name EQ 'ALPHA'
+                    eval_out = ALPHA(args_list(1))
+
+                CASE func_name EQ 'ANDS'
+                    eval_out = ANDS(args_list(1), args_list(2))
+
+                CASE func_name EQ 'BYTELEN'
+                    eval_out = BYTELEN(args_list(1))
+
+                CASE func_name EQ 'CATS'
+                    eval_out = CATS(args_list(1), args_list(2))
+
+                CASE func_name EQ 'CHANGE'
+                    eval_out = CHANGE(args_list(1), args_list(2), args_list(3))
+
+                CASE func_name EQ 'CHANGETIMESTAMP'
+                    eval_out = CHANGETIMESTAMP(args_list(1), args_list(2))
+
+                CASE func_name EQ 'CHAR'
+                    eval_out = CHAR(args_list(1))
+
+                CASE func_name EQ 'CHARS'
+                    eval_out = CHARS(args_list(1))
+
+                CASE func_name EQ 'CONVERT'
+                    eval_out = CONVERT(args_list(1), args_list(2), args_list(3))
+
+                CASE func_name EQ 'COUNT'
+                    eval_out = COUNT(args_list(1), args_list(2))
+
+                CASE func_name EQ 'COUNTS'
+                    eval_out = COUNTS(args_list(1), args_list(2))
+
+                CASE func_name EQ 'DATE'
+                    eval_out = DATE()
+
+                CASE func_name EQ 'DCOUNT'
+                    eval_out = DCOUNT(args_list(1), args_list(2))
+
+                CASE func_name EQ 'DEL'
+                    BEGIN CASE
+                    CASE args_qty EQ 2
+                        DEL args_list(1)<args_list(2)>
+                    CASE args_qty EQ 3
+                        DEL args_list(1)<args_list(2), args_list(3)>
+                    CASE args_qty EQ 4
+                        DEL args_list(1)<args_list(2), args_list(3), args_list(4)>
+                    END CASE
+                    eval_out = args_list(1)
+
+                CASE func_name EQ 'DIR'
+                    eval_out = DIR(args_list(1))
+
+                CASE func_name EQ 'DIV'
+                    eval_out = DIV(args_list(1), args_list(2))
+
+                CASE func_name EQ 'DIVS'
+                    eval_out = DIVS(args_list(1), args_list(2))
+
+                CASE func_name EQ 'DOWNCASE'
+                    eval_out = DOWNCASE(args_list(1))
+
+                CASE func_name EQ 'DQUOTE'
+                    eval_out = DQUOTE(args_list(1))
+
+                CASE func_name EQ 'DROUND'
+                    IF args_qty EQ 2 THEN eval_out = DROUND(args_list(1), args_list(2))
+                    ELSE eval_out = DROUND(args_list(1))
+
+                CASE func_name EQ 'DTX'
+                    eval_out = DTX(args_list(1))
+
+                CASE func_name EQ 'EQ'
+                    eval_out = (args_list(1) EQ args_list(2))
+
+                CASE func_name EQ 'EQS'
+                    eval_out = EQS(args_list(1), args_list(2))
+
+                CASE func_name EQ 'EREPLACE'
+                    BEGIN CASE
+                    CASE args_qty EQ 3
+                        eval_out = EREPLACE(args_list(1), args_list(2), args_list(3))
+                    CASE args_qty EQ 4
+                        eval_out = EREPLACE(args_list(1), args_list(2), args_list(3), args_list(4))
+                    CASE args_qty EQ 5
+                        eval_out = EREPLACE(args_list(1), args_list(2), args_list(3), args_list(4), args_list(5))
+                    END CASE
+
+                CASE func_name EQ 'EXTRACT'
+                    BEGIN CASE
+                    CASE args_qty EQ 2
+                        eval_out = EXTRACT(args_list(1), args_list(2))
+                    CASE args_qty EQ 3
+                        eval_out = EXTRACT(args_list(1), args_list(2), args_list(3))
+                    CASE args_qty EQ 4
+                        eval_out = EXTRACT(args_list(1), args_list(2), args_list(3), args_list(4))
+                    END CASE
+
+                CASE func_name EQ 'FADD'
+                    eval_out = FADD(args_list(1), args_list(2))
+
+                CASE func_name EQ 'FDIV'
+                    eval_out = FDIV(args_list(1), args_list(2))
+
+                CASE func_name EQ 'FIELD'
+                    IF args_qty EQ 3 THEN eval_out = FIELD(args_list(1), args_list(2), args_list(3))
+                    ELSE eval_out = FIELD(args_list(1), args_list(2), args_list(3), args_list(4))
+
+                CASE func_name EQ 'FIELDS'
+                    IF args_qty EQ 3 THEN eval_out = FIELDS(args_list(1), args_list(2), args_list(3))
+                    ELSE eval_out = FIELDS(args_list(1), args_list(2), args_list(3), args_list(4))
+
+                CASE func_name EQ 'FILEINFO'
+                    eval_out = FILEINFO(FILE_handle_list(FILE_no_curr), 1)
+
+                CASE func_name EQ 'FIND'
+                    IF args_qty EQ 2 THEN
+                        FIND args_list(1) IN args_list(2) SETTING fm_posn, vm_posn, sm_posn ELSE
+                            fm_posn = -1
+                        END
+                    END ELSE
+                        FIND args_list(1) IN args_list(2), args_list(3) SETTING fm_posn, vm_posn, sm_posn ELSE
+                            fm_posn = -1
+                        END
+                    END
+
+                    IF fm_posn EQ -1 THEN eval_out = -1
+                    ELSE eval_out = fm_posn :@FM: vm_posn :@FM: sm_posn
+
+                CASE func_name EQ 'FINDSTR'
+                    IF args_qty EQ 2 THEN
+                        FINDSTR args_list(1) IN args_list(2) SETTING fm_posn, vm_posn, sm_posn ELSE
+                            fm_posn = -1
+                        END
+                    END ELSE
+                        FINDSTR args_list(1) IN args_list(2), args_list(3) SETTING fm_posn, vm_posn, sm_posn ELSE
+                            fm_posn = -1
+                        END
+                    END
+
+                    IF fm_posn EQ -1 THEN eval_out = -1
+                    ELSE eval_out = fm_posn :@FM: vm_posn :@FM: sm_posn
+
+                CASE func_name EQ 'FMT'
+                    eval_out = FMT(args_list(1), args_list(2))
+
+                CASE func_name EQ 'FMTS'
+                    eval_out = FMTS(args_list(1), args_list(2))
+
+                CASE func_name EQ 'FMUL'
+                    eval_out = FMUL(args_list(1), args_list(2))
+
+                CASE func_name EQ 'FOLD'
+                    eval_out = FOLD(args_list(1), args_list(2))
+
+                CASE func_name EQ 'FSUB'
+                    eval_out = FSUB(args_list(1), args_list(2))
+
+                CASE func_name EQ 'GE'
+                    eval_out = (args_list(1) GE args_list(2))
+
+                CASE func_name EQ 'GES'
+                    eval_out = GES(args_list(1), args_list(2))
+
+                CASE func_name EQ 'GETCWD'
+                    IF GETCWD(eval_out) THEN NULL
+
+                CASE func_name EQ 'GETENV'
+                    IF GETENV(args_list(1), eval_out) THEN NULL
+                    ELSE eval_out = ''
+
+                CASE func_name EQ 'GT'
+                    eval_out = (args_list(1) GT args_list(2))
+
+                CASE func_name EQ 'ICONV'
+                    eval_out = ICONV(args_list(1), args_list(2))
+
+                CASE func_name EQ 'ICONVS'
+                    eval_out = ICONVS(args_list(1), args_list(2))
+
+                CASE func_name EQ 'IFS'
+                    eval_out = IFS(args_list(1), args_list(2), args_list(3))
+
+                CASE func_name EQ 'INDEX'
+                    eval_out = INDEX(args_list(1), args_list(2), args_list(3))
+
+                CASE func_name EQ 'INPUT'
+                    IF args_qty EQ 0 THEN
+                        INPUT eval_out
+                    END ELSE
+                        INPUT eval_out FOR args_list(1) ELSE eval_out = ''
+                    END
+
+                CASE func_name EQ 'INS'
+                    BEGIN CASE
+                    CASE args_qty EQ 3
+                        INS args_list(1) BEFORE args_list(2)<args_list(3)>
+                    CASE args_qty EQ 4
+                        INS args_list(1) BEFORE args_list(2)<args_list(3), args_list(4)>
+                    CASE args_qty EQ 5
+                        INS args_list(1) BEFORE args_list(2)<args_list(3), args_list(4), args_list(5)>
+                    END CASE
+                    eval_out = args_list(2)
+
+                CASE func_name EQ 'INT'
+                    eval_out = INT(args_list(1))
+
+                CASE func_name EQ 'ISALPHA'
+                    eval_out = ISALPHA(args_list(1))
+
+                CASE func_name EQ 'ISALNUM'
+                    eval_out = ISALNUM(args_list(1))
+
+                CASE func_name EQ 'ISCNTRL'
+                    eval_out = ISCNTRL(args_list(1))
+
+                CASE func_name EQ 'ISDIGIT'
+                    eval_out = ISDIGIT(args_list(1))
+
+                CASE func_name EQ 'ISLOWER'
+                    eval_out = ISLOWER(args_list(1))
+
+                CASE func_name EQ 'ISPRINT'
+                    eval_out = ISPRINT(args_list(1))
+
+                CASE func_name EQ 'ISSPACE'
+                    eval_out = ISSPACE(args_list(1))
+
+                CASE func_name EQ 'ISUPPER'
+                    eval_out = ISUPPER(args_list(1))
+
+                CASE func_name EQ 'LE'
+                    eval_out = (args_list(1) LE args_list(2))
+
+                CASE func_name EQ 'LEFT'
+                    eval_out = LEFT(args_list(1), args_list(2))
+
+                CASE func_name EQ 'LEN'
+                    eval_out = LEN(args_list(1))
+
+                CASE func_name EQ 'LENS'
+                    eval_out = LENS(args_list(1))
+
+                CASE func_name EQ 'LES'
+                    eval_out = LES(args_list(1), args_list(2))
+
+                CASE func_name EQ 'LOCALDATE'
+                    eval_out = LOCALDATE(args_list(1), args_list(2))
+
+                CASE func_name EQ 'LOCALTIME'
+                    eval_out = LOCALTIME(args_list(1), args_list(2))
+
+                CASE func_name EQ 'LOWER'
+                    eval_out = LOWER(args_list(1))
+
+                CASE func_name EQ 'LT'
+                    eval_out = (args_list(1) LT args_list(2))
+
+                CASE func_name EQ 'MAKETIMESTAMP'
+                    eval_out = MAKETIMESTAMP(args_list(1), args_list(2), args_list(3))
+
+                CASE func_name EQ 'MATCHES'
+                    eval_out = (args_list(1) MATCHES args_list(2))
+
+                CASE func_name EQ 'MATCHFIELD'
+                    eval_out = MATCHFIELD(args_list(1), args_list(2), args_list(3))
+
+                CASE func_name EQ 'MAXIMUM'
+                    eval_out = MAXIMUM(args_list(1))
+
+                CASE func_name EQ 'MINIMUM'
+                    eval_out = MINIMUM(args_list(1))
+
+                CASE func_name EQ 'MOD'
+                    eval_out = MOD(args_list(1), args_list(2))
+
+                CASE func_name EQ 'MODS'
+                    eval_out = MODS(args_list(1), args_list(2))
+
+                CASE func_name EQ 'MULS'
+                    eval_out = MULS(args_list(1), args_list(2))
+
+                CASE func_name EQ 'NE'
+                    eval_out = (args_list(1) NE args_list(2))
+
+                CASE func_name EQ 'NEG'
+                    eval_out = NEG(args_list(1))
+
+                CASE func_name EQ 'NEGS'
+                    eval_out = NEGS(args_list(1))
+
+                CASE func_name EQ 'NES'
+                    eval_out = NES(args_list(1), args_list(2))
+
+                CASE func_name EQ 'NOT'
+                    eval_out = NOT(args_list(1))
+
+                CASE func_name EQ 'NOTS'
+                    eval_out = NOTS(args_list(1))
+
+                CASE func_name EQ 'NUM'
+                    eval_out = NUM(args_list(1))
+
+                CASE func_name EQ 'NUMS'
+                    eval_out = NUMS(args_list(1))
+
+                CASE func_name EQ 'OCONV'
+                    eval_out = OCONV(args_list(1), args_list(2))
+
+                CASE func_name EQ 'OCONVS'
+                    eval_out = OCONVS(args_list(1), args_list(2))
+
+                CASE func_name EQ 'ORS'
+                    eval_out = ORS(args_list(1), args_list(2))
+
+                CASE func_name EQ 'PUTENV'
+                    eval_out = PUTENV(args_list(1))
+
+                CASE func_name EQ 'PWR'
+                    eval_out = PWR(args_list(1), args_list(2))
+
+                CASE func_name EQ 'RAISE'
+                    eval_out = RAISE(args_list(1))
+
+                CASE func_name EQ 'REGEXP'
+                    eval_out = REGEXP(args_list(1), args_list(2))
+
+                CASE func_name EQ 'REPLACE'
+                    BEGIN CASE
+                    CASE args_qty EQ 3
+                        eval_out = REPLACE(args_list(1), args_list(2); args_list(3))
+                    CASE args_qty EQ 4
+                        eval_out = REPLACE(args_list(1), args_list(2), args_list(3); args_list(4))
+                    CASE args_qty EQ 5
+                        eval_out = REPLACE(args_list(1), args_list(2), args_list(3), args_list(4); args_list(5))
+                    END CASE
+
+                CASE func_name EQ 'RIGHT'
+                    eval_out = RIGHT(args_list(1), args_list(2))
+
+                CASE func_name EQ 'RND'
+                    eval_out = RND(args_list(1))
+
+                CASE func_name EQ 'SADD'
+                    eval_out = SADD(args_list(1), args_list(2))
+
+                CASE func_name EQ 'SDIV'
+                    eval_out = SDIV(args_list(1), args_list(2))
+
+                CASE func_name EQ 'SENTENCE'
+                    eval_out = SENTENCE(args_list(1))
+
+                CASE func_name EQ 'SEQ'
+                    eval_out = SEQ(args_list(1))
+
+                CASE func_name EQ 'SEQS'
+                    seqs_in = args_list(1)
+                    GOSUB yseqsemu
+                    eval_out = seqs_out
+
+                CASE func_name EQ 'SMUL'
+                    eval_out = SMUL(args_list(1), args_list(2))
+
+                CASE func_name EQ 'SORT'
+                    eval_out = SORT(args_list(1))
+
+                CASE func_name EQ 'SPACE'
+                    eval_out = SPACE(args_list(1))
+
+                CASE func_name EQ 'SPACES'
+                    eval_out = SPACES(args_list(1))
+
+                CASE func_name EQ 'SPLICE'
+                    eval_out = SPLICE(args_list(1), args_list(2), args_list(3))
+
+                CASE func_name EQ 'SQRT'
+                    eval_out = SQRT(args_list(1))
+
+                CASE func_name EQ 'SSUB'
+                    eval_out = SSUB(args_list(1), args_list(2))
+
+                CASE func_name EQ 'STR'
+                    eval_out = STR(args_list(1), args_list(2))
+
+                CASE func_name EQ 'STRS'
+                    eval_out = STRS(args_list(1), args_list(2))
+
+                CASE func_name EQ 'SUBS'
+                    eval_out = SUBS(args_list(1), args_list(2))
+
+                CASE func_name EQ 'SQUOTE'
+                    eval_out = SQUOTE(args_list(1))
+
+                CASE func_name EQ 'SUBSTRINGS'
+                    eval_out = SUBSTRINGS(args_list(1), args_list(2), args_list(3))
+
+                CASE func_name EQ 'SUM'
+                    eval_out = SUM(args_list(1))
+
+                CASE func_name EQ 'SYSTEM'
+                    eval_out = SYSTEM(args_list(1))
+
+                CASE func_name EQ 'TIME'
+                    eval_out = TIME()
+
+                CASE func_name EQ 'TIMEDATE'
+                    eval_out = TIMEDATE()
+
+                CASE func_name EQ 'TIMEDIFF'
+                    eval_out = TIMEDIFF(args_list(1), args_list(2), args_list(3))
+
+                CASE func_name EQ 'TIMESTAMP'
+                    eval_out = TIMESTAMP()
+
+                CASE func_name EQ 'TRANS'
+                    eval_out = TRANS(args_list(1), args_list(2), args_list(3), args_list(4))
+
+                CASE func_name EQ 'TRIM'
+                    BEGIN CASE
+                    CASE args_qty EQ 1
+                        eval_out = TRIM(args_list(1))
+                    CASE args_qty EQ 2
+                        eval_out = TRIM(args_list(1), args_list(2))
+                    CASE args_qty EQ 3
+                        eval_out = TRIM(args_list(1), args_list(2), args_list(3))
+                    END CASE
+
+                CASE func_name EQ 'UNIQUEKEY'
+                    eval_out = UNIQUEKEY()
+
+                CASE func_name EQ 'UPCASE'
+                    eval_out = UPCASE(args_list(1))
+
+                CASE func_name EQ 'XTD'
+                    eval_out = XTD(args_list(1))
+
                 END CASE
-
-            CASE func_name EQ 'UNIQUEKEY'
-                MACRO_value = UNIQUEKEY()
-
-            CASE func_name EQ 'UPCASE'
-                MACRO_value = UPCASE(args_list(1))
-
-            CASE func_name EQ 'XTD'
-                MACRO_value = XTD(args_list(1))
 
             END CASE
 
-            GOSUB ysetmacro
+            to_be_replaced = eval_out
+            IF eval_keyword NE 'func' THEN GOSUB yreplacemacros
+            eval_data(i_eval) = to_be_replaced
 
-        END CASE
+        NEXT i_eval
+
+        IF skip_cmd THEN CONTINUE
+
+        MACRO_value = eval_data(eval_qty)   ;* taking the last one
+        GOSUB ysetmacro
+
     REPEAT
 
     RETURN
@@ -1847,7 +1935,7 @@ xecread:
 
         DIM DICT_list(FILE_no_curr)
         DIM DICT_list_lref(FILE_no_curr)
-        GOSUB ygetdict   ;*  $DICT$, $LREF$ (25, 26) are set there
+        GOSUB ygetdict   ;*  {DICT}, {LREF} (25, 26) are set there
 
     END ELSE
         FILE_no_curr = posn
@@ -1876,7 +1964,7 @@ xecread:
     IF OVERRIDE_posn THEN RECORD_curr<OVERRIDE_posn> = ''  ;* we won't have OVERRIDEs on amended record in case of "clear" so comparison would fail to see non-changed record
 
     RECORD_curr_init = RECORD_curr   ;* for comparison before commit
-    MACRO_list(10) = RECORD_curr   ;* can be addressed as $RECORD$
+    MACRO_list(10) = RECORD_curr   ;* can be addressed as {RECORD}
 
     IF RECORD_is_new THEN MACRO_list(27) = 1
     ELSE MACRO_list(27) = 0
@@ -1906,7 +1994,7 @@ xecrunofs:
         OFS_msg = SCRIPT_line
 
         GOSUB ylaunchofs
-*        OFS_commit_ok, OFS_output ==>  '$OFSCOMMIT$', '$OFSOUT$' available in the script
+*        OFS_commit_ok, OFS_output ==>  '{OFSCOMMIT}', '{OFSOUT}' available in the script
 
         ofs_func = FIELD(OFS_msg, '/', 2)
         IF INDEX('IADR', ofs_func, 1) AND NOT(OFS_commit_ok) THEN
@@ -2162,7 +2250,7 @@ ygetdict:
 * in: FILE_no_curr
 * out: DICT_list(FILE_no_curr)
 * out: DICT_list_lref(FILE_no_curr)
-* out: REC_STAT_posn, OVERRIDE_posn, LOCREF_posn, $DICT$, $LREF$
+* out: REC_STAT_posn, OVERRIDE_posn, LOCREF_posn, {DICT}, {LREF}
 
     dict_sel_list = ''    ;   dict_sel_list_lref = ''
 
@@ -2207,8 +2295,8 @@ ygetdict:
     DICT_list(FILE_no_curr) = dict_sel_list
     DICT_list_lref(FILE_no_curr) = dict_sel_list_lref
 
-    MACRO_list(25) = dict_sel_list   ;* can be addressed as $DICT$
-    MACRO_list(26) = dict_sel_list_lref   ;* can be addressed as $LREF$
+    MACRO_list(25) = dict_sel_list   ;* can be addressed as {DICT}
+    MACRO_list(26) = dict_sel_list_lref   ;* can be addressed as {LREF}
 
     FIND 'LOCAL.REF' IN DICT_list(FILE_no_curr) SETTING LOCREF_posn ELSE LOCREF_posn = 0
 
@@ -2330,15 +2418,12 @@ ygetnextline:
 
     IF first_char EQ ' ' THEN FIRST_space = @TRUE
     ELSE FIRST_space = @FALSE
-    SCRIPT_line = TRIM(SCRIPT_line, ' ', 'L')   ;* it's vital to do it before macros substitution - thus we'll keep leading $SPACE$'s
+    SCRIPT_line = TRIM(SCRIPT_line, ' ', 'L')   ;* it's vital to do it before macros substitution - thus we'll keep leading {SPACE}'s
 
-    IF CMD_line NE 'move' THEN
-        macro_qty = INMAT(MACRO_list)
-        FOR i = 1 TO macro_qty
-            macro_spec = '$' : MACRO_name_list<i> : '$'
-            macro_val = MACRO_list(i)
-            IF INDEX(SCRIPT_line, macro_spec, 1) THEN CHANGE macro_spec TO macro_val IN SCRIPT_line
-        NEXT i
+    IF CMD_line NE 'default' AND CMD_line NE 'move' THEN
+        to_be_replaced = SCRIPT_line
+        GOSUB yreplacemacros
+        SCRIPT_line = to_be_replaced
     END
 
     RETURN
@@ -2433,6 +2518,18 @@ yprocalertmsg:
 
     RETURN
 
+*-------------------------------------------------------------------------------------
+yreplacemacros:
+* in/out: to_be_replaced
+    macro_qty = INMAT(MACRO_list)
+    FOR i = 1 TO macro_qty
+        macro_spec = MACRO_name_list<i>
+        macro_val = MACRO_list(i)
+        IF INDEX(to_be_replaced, macro_spec, 1) THEN CHANGE macro_spec TO macro_val IN to_be_replaced
+    NEXT i
+
+    RETURN
+
 *----------------------------------------------------------------------------------------------------------------------------------
 ysetmacro:
 * in: MACRO_name, MACRO_value
@@ -2445,7 +2542,7 @@ ysetmacro:
         DIM MACRO_list(posn)
         MACRO_name_list<-1> = MACRO_name
     END ELSE
-        IF NOT(ISDIGIT(MACRO_name)) AND UPCASE(MACRO_name) EQ MACRO_name THEN
+        IF posn LE MACRO_sys_qty THEN
             ERROR_message = 'System-level macro ({1}) can not be reassigned'
             CHANGE '{1}' TO MACRO_name IN ERROR_message
             EXIT_code = 48
