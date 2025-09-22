@@ -8,7 +8,7 @@ PROGRAM tafcj
     $INSERT I_F.OFS.SOURCE
     $INSERT I_F.OFS.REQUEST.DETAIL
 
-    CRT 'tafcj script interpreter 1.3.0'
+    CRT 'tafcj script interpreter 1.3.1'
 
     GOSUB initvars
     GOSUB parseparams
@@ -70,11 +70,11 @@ dohelp:
     CRT '1st one - OFS.SOURCE @ID (or "-" if login to T24 is not necessary)'
     CRT '-s:script_file'
     CRT 'Ones below are optional'
-    CRT '-l:<login>     T24 login'
-    CRT '-p:<password>  T24 password'
-    CRT '-var:<value>   pass a variable, e.g. -var:dayno:T1'
-    CRT '-a:<file>      duplicate all "print" command outputs (new file)'
-    CRT '-A:<file>      duplicate all "print" command outputs (append to file)'
+    CRT '-l:<login>             T24 login (needed only if any T24 data is going to be updated)'
+    CRT '-p:<password>          T24 password (if T24 login is supplied and password is not - its manual input will be requested)'
+    CRT '-var:{macro}:value     define a macro, e.g. -var:{dayno}:T1'
+    CRT '-a:<file>              duplicate all "print" command outputs (new file)'
+    CRT '-A:<file>              duplicate all "print" command outputs (append to file)'
 
     RETURN
 

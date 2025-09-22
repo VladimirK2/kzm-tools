@@ -18,6 +18,7 @@ In case of OFS error IHLD record is deleted.
 - Changes can be applied to same data records by different developers without overwriting the full record.
 - Easy to store scripts in git; CI/CD can be built over it.
 - Some TAFJ problems are corrected in the script interpreter - e.g. SEQS() function absense etc.
+- No more need in one-time subroutines/programs.
 - Finally, no need in DBTools or JED when certain standard scripts are available.
 
 ## How to run
@@ -50,28 +51,31 @@ A line starting with '#' is a comment.
 
 ### Registers (or macros)
 
-Similar to variables but can be used anywhere (except commands and labels):
-Enclosed into dollar symbols - when used. When assigned - no dollar symbols required.
+Similar to variables but can be used anywhere - separately or as a part of other expression (except in commands and labels).
+Any names can be used; it's recommended to enclose names in curly brackets (though other syntax can be chosen).
 
     # assign
     move
-        abc
-        const
-            Hello
+        {abc}
+        const Hello
+        /by/
+        const bye
     # use
     print
-        $abc$ World!
-        $abc$$abc$$abc$
+        {abc} World!
+        {abc}{abc}{abc}
+        Good/by/ cruel world...
     # output:
     # Hello World!
     # HelloHelloHello
+    # Goodbye cruel world...
 
-Uppercase macros can't be reassigned (useful for constants to avoid accidental change). There are also "system" (standard) macros that are assigned automatically: [Standard macros](#stdmacros).
+There are also "system" (standard) macros that are assigned automatically. Systen macros can't be reassigned. See: [Standard macros](#stdmacros).
 
 Example:
 
     print
-        $TODAY$
+        {TODAY}
 
 See also: [move](#move), [print](#print)
 
@@ -88,17 +92,16 @@ Labels are case-sensitive. They can be addressed via a macro (but can't contain 
         F.SPF
         SYSTEM
     move
-        t24rel
-        field
-            CURRENT.RELEASE
+        {t24rel}
+        field CURRENT.RELEASE
     jump
-        :proc_$t24rel$
+        :proc_{t24rel}
     :proc_R19
     print
         Older release
     jump
         :fini
-    :proc_R23
+    :proc_R24
     print
         Newer release
     :fini
@@ -115,7 +118,7 @@ Non-ASCII (or extended-ASCII) characters result in fatal error (ASCII 32 to 126 
 
 Commands are case-sensitive. Each command should occupy one line; command options follow on next line(s) with left offset at least 1 space or tab.
 
-All examples contain the data from Temenos Model Bank R23 running on Windows Server 2019.
+All examples contain the data from Temenos Model Bank R24 running on Windows Server 2019.
 
 ### Commands (alphabetical index)
 
@@ -134,11 +137,21 @@ Several outputs can be issued at once, e.g.:
 
     print
         Working...
+        Still working...
         All is done
 
 Useful for interaction with user.
 
-jBASE delimiters are masked in the screen output, e.g.: (@FM) etc.
+jBASE delimiters are masked in the screen output, e.g.:
+
+    move
+        {var}
+        const 123{FM}456
+    print
+        {var}
+
+Output:
+    123 (@FM) 456
 
 #### info
 
@@ -226,7 +239,7 @@ Check return code, script will fail if it doesn't match:
 
     exec
         COPY FROM F.SPF TO &TEMP& ALL
-        805$VM$1$VM$COPY_DONE
+        805{VM}1{VM}COPY_DONE
 
 Output:
 
@@ -240,20 +253,20 @@ Correct the copy command:
 
     exec
         COPY FROM F.SPF TO &TEMP& ALL OVERWRITING
-        805$VM$1$VM$COPY_DONE
+        805{VM}1{VM}COPY_DONE
 
 Output:
 
-    [INFO] Command at the line 2: return code "805]1]COPY_DONE" (as expected)
+    [INFO] Command at the line 2: return code "805 (@VM) 1 (@VM) COPY_DONE" (as expected)
     [INFO]  .\test.tcj finished successfully
 
-System macros \$EXECSCREEN\$, \$EXECRETCODE\$, \$EXECRETDATA\$ and \$EXECRETLIST\$ are available after "exec" command:
+System macros {EXECSCREEN}, {EXECRETCODE}, {EXECRETDATA} and {EXECRETLIST} are available after "exec" command:
 
     exec
         COPY FROM F.SPF TO &TEMP& ALL OVERWRITING
     print
-        $EXECSCREEN$
-        $EXECRETCODE$
+        {EXECSCREEN}
+        {EXECRETCODE}
 
 Output:
 
@@ -276,19 +289,19 @@ Read a record into record buffer. Examples:
 
 A non-existing record can be specified for further population and saving.
 
-After "read" command system macros \$RECORD\$, \$DICT\$ and \$LREF\$ are available:
+After "read" command system macros {RECORD}, {DICT} and {LREF} are available:
 
     read
         F.ABBREVIATION
         FT
     info
-        $RECORD$
-        $DICT$
+        {RECORD}
+        {DICT}
     read
         FBNK.AA.ARRANGEMENT.ACTIVITY
         DUMMY
     info
-        $LREF$
+        {LREF}
 
 Output:
 
@@ -296,13 +309,13 @@ Output:
     [INFO] ORIGINAL.TEXT (@FM) RECORD.STATUS (@FM) CURR.NO (@FM) INPUTTER (@FM) DATE.TIME (@FM) AUTHORISER (@FM) CO.CODE (@FM) DEPT.CODE (@FM) AUDITOR.CODE ...
     [INFO] USRETL.ITEM.TYP (@FM) USRETL.ITEM.VAL (@FM) IS.CONTRACT.REF (@FM) IS.PRODUCT (@FM) IS.COM.SALE.REF (@FM) IS.DISBURSE.REF (@FM) REQUEST.CUST (@FM) HUWRNT.TXN.CODE
 
-To see if a record is a new or existing one the system macro \$NEWRECORD\$ can be used:
+To see if a record is a new or existing one the system macro {NEWRECORD} can be used:
 
     read
         F.HELPTEXT.MENU
         NEW
     jump
-        :newrec$NEWRECORD$
+        :newrec{NEWRECORD}
     :newrec0
     print
         Record exists
@@ -348,6 +361,7 @@ Update a field in the record being read into buffer. Syntax is OFS-like.
         F.PRINTER.ID
         TEST
     update
+        PRIME.PRINTER.ID::=HOLD
         COMMAND:1:1=TEST1
         COMMAND:1:2=TEST2
 
@@ -356,8 +370,8 @@ Update a field in the record being read into buffer. Syntax is OFS-like.
         F.HELPTEXT.MENU
         MY.MENU
     update
-        APPLICATION:-1:1=SC.SETTLEMENT,ACT.SETT I E
-        DESCRIPT:-1:1=Unauth Actual Settlement
+        APPLICATION:-1:=SC.SETTLEMENT,ACT.SETT I E
+        DESCRIPT:-1:=Unauth Actual Settlement
 
     # address field by number
     read
@@ -371,7 +385,7 @@ Update a field in the record being read into buffer. Syntax is OFS-like.
         F.LOCKING
         FBNK.FOREX
     update
-        @RECORD::=FX2332400001$FM$FX2000100001
+        @RECORD::=FX2332400001{FM}FX2000100001
 
 ##### Note
 
@@ -396,9 +410,11 @@ Commit changes to a record - data from buffer is posted to the database. As it w
     commit
         IHLD
 
-    # raw commit, not recommended unless there's no other way
+    # raw commit, not recommended unless there's no other way - for example, for tables without $NAU file - like F.LOCKING
     commit
         RAW
+    # output for an example above (in "update" section):
+    # [INFO] F.LOCKING>FBNK.FOREX: WRITE applied
 
 ##### Notes
 
@@ -408,7 +424,7 @@ Commit changes to a record - data from buffer is posted to the database. As it w
 
 *If the record was changed and no commit was done at the script end or before another "read", fatal error is triggered: "Changes not saved"*.
 
-*If "committing" OFS fails, temporary IHLD record is deleted. Unfortunately, under TAFJ it doesn't happen because the whole session aborts.*
+*If "committing" OFS fails, temporary IHLD record is deleted.*
 
 #### clear
 
@@ -464,22 +480,19 @@ Pass execution to a line after specified label.
 
     # do something 5 times
     move
-        cntr
-        const
-            0
+        {cntr}
+        const 0
     :strt
     move
-        cntr
-        func
-            ADDS($cntr$, 1)
-        01
-        func
-            LE($cntr$, 5)
+        {cntr}
+        func ADDS({cntr}, 1)
+        {01}
+        func LE({cntr}, 5)
     jump
-        :proc$01$
+        :proc{01}
     :proc1
     print
-        $cntr$
+        {cntr}
     jump
         :strt
     :proc0
@@ -502,15 +515,18 @@ Proceed with jQL SELECT.
     :strt
     getnext
         LOCKING_SEL
-        next_id
+        {next_id}
     print
-        $next_id$
+        {next_id}
     jump
         :strt
-    # special label where we go when SELECT list is exhausted
+
+    # mandatory special label where we go when SELECT list is exhausted
     :no_more_LOCKING_SEL
     exit
+
     # optional special label where we go when SELECT returned error
+    # (TAFC only; under tAFJ session terminates after SELECT error)
     :sel_error_LOCKING_SEL
     error
         Select error
@@ -527,11 +543,11 @@ Output:
 
 #### getlist
 
-Get saved list. See [select](#select).
+Get saved list. See the example in [select](#select).
 
 #### getnext
 
-Get the next item in saved list. See [select](#select).
+Get the next item in saved list. See the example in [select](#select).
 
 #### formlist
 
@@ -539,18 +555,18 @@ Form a list from dynamic array.
 
     formlist
         KEYS
-        REC1$FM$REC2$FM$REC3
+        REC1{FM}REC2{FM}REC3
     getnext
         KEYS
-        key1
+        {key1}
     getnext
         KEYS
-        key2
+        {key2}
     getnext
         KEYS
-        key3
+        {key3}
     print
-        $key1$ / $key2$ / $key3$
+        {key1} / {key2} / {key3}
 
 Output:
 
@@ -571,15 +587,13 @@ Keywords:
 A constant:
 
     move
-        zero
-        const
-            0
+        {zero}
+        const 0
     # create a dynamic array
-        array
-        const
-            A$FM$BB$VM$CCC$SM$$zero$
+        {array}
+        const A{FM}BB{VM}CCC{SM}{zero}
     print
-        $array$
+        {array}
 
 Output:
 
@@ -588,11 +602,10 @@ Output:
 *Note: spaces in "const" instructions are preserved, e.g.:*
 
     move
-        var
-        const
-            (A   B     C)
+        {var}
+        const (A   B     C)
     print
-        $var$
+        {var}
 
 Output:
 
@@ -606,14 +619,12 @@ See also: [Standard macros](#stdmacros).
         FBNK.CUSTOMER
         100100
     move
-        tc
-        field
-            TOWN.COUNTRY
-        mname
-        field
-            PRIVACY.STATUS
+        {tc}
+        field TOWN.COUNTRY
+        {mname}
+        field PRIVACY.STATUS
     print
-        $tc$, $mname$
+        {tc}, {mname}
 
 Output:
     Seattle, OPT-IN
@@ -624,9 +635,8 @@ Core field can also be addressed by its number:
         FBNK.CUSTOMER
         100100
     move
-        tc
-        field
-            7
+        {tc}
+        field 7
 
 ##### func
 
@@ -640,33 +650,30 @@ Examples:
         F.SPF
         SYSTEM
     move
-        prods
-        field
-            PRODUCTS
-        qty
-        func
-            DCOUNT($prods$, $VM$)
+        {prods}
+        field PRODUCTS
+        {qty}
+        func DCOUNT({prods}, {VM})
     print
-        $qty$
+        {qty}
 
-Output: 627.
+Output: 669.
 
 Notes:
 
-*Function parameters are to be specified without quotes, comma-delimited*.
+*Function parameters, even strings, are to be specified without quotes, comma-delimited*.
 
-*Only one set of parentheses can be used in function definition. If those are necessary in function parameters, system macros \$LPARENTH\$ and \$RPARENTH\$ are to be used*.
+*Only one set of parentheses can be used in function definition. If those are necessary in function parameters, system macros {LPARENTH} and {RPARENTH} are to be used*.
 
-*Commas in function parameters shall be represented as \$COMMA\$*.
+*Commas in function parameters shall be represented as {COMMA}. Pipes - to {PIPE} (see "Processing several steps" below)*.
 
-*If space is a part of function parameter - system macro \$SPACE\$ is to be used to specify leading or trailing spaces. Spaces inside a parameter are preserved*.
+*If space is a part of function parameter - system macro {SPACE} is to be used to specify leading or trailing spaces. Spaces inside a parameter are preserved*.
 
     move
-        output
-        func
-            MATCHES( FT220172HQJ4, 'F'1A5N5X )
+        {output}
+        func MATCHES( FT250172HQJ4, 'F'1A5N5X )
     print
-        Result: $output$
+        Result: {output}
 
 Output:
 
@@ -676,57 +683,50 @@ More examples:
 
     read
         FBNK.ACCOUNT
-        DUMMY
+        {DUMMY}
     move
-        finfo
-        func
-            FILEINFO()
-        ftype
-        func
-            EXTRACT( $finfo$, 21 )
+        {finfo}
+        func FILEINFO()
+        {ftype}
+        func EXTRACT( {finfo}, 21 )
     print
-        $ftype$
+        {ftype}
     # output: XMLMSSQL
 
     move
-        outp
-        func
-            CONVERT(CEYZ, +-*$COMMA$, ABCCCDEFCDYZ)
+        {outp}
+        func CONVERT(CEYZ, +-*{COMMA}, ABCCCDEFCDYZ)
     print
-        $outp$
+        {outp}
     # output: AB+++D-F+D*,
 
     move
-        var
-        func
-            DQUOTE( A   B     C)
+        {var}
+        func DQUOTE( A   B     C)
     print
-        $var$
+        {var}
     # output: "A   B     C"
 
     move
-        var
-        func
-            DQUOTE( $SPACE$A B     C)
+        {var}
+        func DQUOTE( {SPACE}{SPACE}A B     C{SPACE})
     print
-        $var$
-    # output: " A B     C"
+        {var}
+    # output: "  A B     C "
 
 In this example conditional TAFC/TAFJ script lines are shown:
 
     move
-        func_name
-        const
-        GETENV
+        {func_name}
+        const GETENV
     print
-        Testing $func_name$() ...
+        Testing {func_name}() ...
     move
-        rezt
-        func
-    =TAFC    $func_name$( TAFC_HOME )
-    =TAFJ    $func_name$( TAFJ_HOME )
+        {rezt}
+    =TAFC func {func_name}( TAFC_HOME )
+    =TAFJ func {func_name}( TAFJ_HOME )
     print
-        $rezt$
+        {rezt}
 
 Output (TAFC):
 
@@ -743,30 +743,26 @@ Output (TAFJ):
     =TAFC    AC.MENU
     =TAFJ    ACCOUNT.ENTRY
     move
-        appl
-        field
-            APPLICATION
-        tofind
-        const
-    =TAFC        ACCOUNT.STATEMENT
-    =TAFJ        ENQ ACCT.STMT.HIST
-        found
-        func
-            FIND( $tofind$, $appl$ )
+        {appl}
+        field APPLICATION
+        {tofind}
+    =TAFC const ACCOUNT.STATEMENT
+    =TAFJ const ENQ ACCT.STMT.HIST
+        {found}
+        func FIND( {tofind}, {appl} )
     print
-        $found$
+        {found}
+
     move
-        random
-        func
-            RND(100000)
-        tofind
-        const
-            ACCOUNT, I $random$
-        found
-        func
-            FIND( $tofind$, $appl$ )
+        {random}
+        func RND(100000)
+        {tofind}
+        const ACCOUNT, I {random}
+        {found}
+        func FIND( {tofind}, {appl} )
+
     print
-        $random$ found? => $found$
+        {random} found? => {found}
 
 Output example:
 
@@ -776,20 +772,18 @@ Output example:
 *Pseudo-functions INS() and DEL(); example:*
 
     move
-        in_array
-        const
-            1$FM$2$FM$3
-        out_array
-        func
-            INS(4, $in_array$, 2)
+        {in_array}
+        const 1{FM}2{FM}3
+        {out_array}
+        func INS(4, {in_array}, 2)
     print
-        $out_array$
+        {out_array}
+
     move
-        out_array
-        func
-            DEL($in_array$, 2)
+        {out_array}
+        func DEL({in_array}, 2)
     print
-        $out_array$
+        {out_array}
 
 Output:
 
@@ -802,7 +796,7 @@ Call a "EVAL" subroutine - one that can be used in jQL EVAL(). Example:
 
 jBC subroutine:
 
-    SUBROUTINE tafCJlocref(out_lref_list, in_app_name)
+    SUBROUTINE tafcj_subr_locref(out_lref_list, in_app_name)
     *
         CALL EB.LOCREF.SETUP(in_app_name, out_lref_list)
     *
@@ -812,118 +806,138 @@ jBC subroutine:
 Script:
 
     move
-        lrefs
-        subr
-            tafCJlocref ACCOUNT
-        fld1
-        func
-            EXTRACT($lrefs$, 1, 1)
-        fld2
-        func
-            EXTRACT($lrefs$, 2, 1)
-        fld3
-        func
-            EXTRACT($lrefs$, 3, 1)
-        qty
-        func
-            DCOUNT($lrefs$, $FM$)
+        {lrefs}
+        subr tafcj_subr_locref ACCOUNT
+        {fld1}
+        func EXTRACT({lrefs}, 1, 1)
+        {fld2}
+        func EXTRACT({lrefs}, 2, 1)
+        {fld3}
+        func EXTRACT({lrefs}, 3, 1)
+        {qty}
+        func DCOUNT({lrefs}, {FM})
+
     print
-        $fld1$
-        $fld2$
-        $fld3$
-        Local fields found: $qty$
+        {fld1}
+        {fld2}
+        {fld3}
+        Local fields found: {qty}
+
     # output:
     # PLEDGE.PURPOSE
     # PLEDGE.FLAG
     # SOLD.DATE
     # Local fields found: 138
 
+##### if ... then ... else
+
+    read
+        F.SPF
+        SYSTEM
+    move
+        {t24rel}
+        field CURRENT.RELEASE
+        {old_or_new}
+        if {t24rel} eq R24 then New else Old
+    print
+        {old_or_new}
+
+*Note: comparison operators supported: eq, ne, gt, ge, lt, le, lk, ul.*
+
+##### Processing several steps
+
+"Pipe" (|) can be used to proceed several steps with the register. Examples:
+
+    move
+        {var}
+        const 5 | func SPACE(@1) | func SQUOTE(@2)
+    print
+        {var}
+    # output: '     '
+
+    read
+        F.SPF
+        SYSTEM
+    move
+        {t24rel}
+        field CURRENT.RELEASE
+        {old_or_new}
+        const New | const Old | if {t24rel} eq R24 then @1 else @2
+    print
+        {old_or_new}
+
+
 #### default
 
-Default a macro passed via "-var:" parameter.
+Default a macro in case it's not being passed via "-var:" parameter.
 
 Script test.tcj:
 
     exec
-        DOS /c C:\temenos\TAFJ\bin\trun.bat tafcj - -s:\temenos\TAFJ\UD\test2.tcj -var:folder:ETC.BP
-        0$FM$0
+        DOS /c C:\temenos\TAFJ\bin\trun.bat tafcj - -s:\temenos\T24\bnk\UD\test2.tcj -var:{folder}:ETC.BP
+        0{FM}0
     move
-        out1
-        const
-            $EXECSCREEN$
+        {out1}
+        const {EXECSCREEN}
     exec
-        DOS /c C:\temenos\TAFJ\bin\trun.bat tafcj - -s:\temenos\TAFJ\UD\test2.tcj
-        0$FM$0
+        DOS /c C:\temenos\TAFJ\bin\trun.bat tafcj - -s:\temenos\T24\bnk\UD\test2.tcj
+        0{FM}0
     move
-        out2
-        const
-            $EXECSCREEN$
+        {out2}
+        const {EXECSCREEN}
     print
         1 ========>
-        $out1$
+        {out1}
         2 ========>
-        $out2$
+        {out2}
 
 Script test2.tcj:
 
     default
-        folder
-        const
-            MISC.BP
+        {folder}
+        const MISC.BP
     print
-        Will proceed $folder$
+        Will process {folder}
 
 Output:
 
-    Script to run: C:\temenos\TAFJ\UD\test.tcj
-    Reading script...
-    Parsing script...
-    Proceeding ...
     1 ========>
-    tafcj script interpreter 1.2.4
-    Script to run: \temenos\TAFJ\UD\test2.tcj
+    tafcj script interpreter 1.3.1
+    Script to run: \temenos\T24\bnk\UD\ETC.tcj\test2.tcj
     Variable(s) passed to script:
-    folder = "ETC.BP"
+    {folder} = "ETC.BP"
     Reading script...
     Parsing script...
     Proceeding ...
-    Will proceed ETC.BP
-    [INFO] \temenos\TAFJ\UD\test2.tcj finished successfully
-    Elapsed time: 1.66 s.
+    Will process ETC.BP
+    [INFO] \temenos\T24\bnk\UD\ETC.tcj\test2.tcj finished successfully
+    Elapsed time: 1.20 s.
     2 ========>
-    tafcj script interpreter 1.2.4
-    Script to run: \temenos\TAFJ\UD\test2.tcj
+    tafcj script interpreter 1.3.1
+    Script to run: \temenos\T24\bnk\UD\ETC.tcj\test2.tcj
     Reading script...
     Parsing script...
     Proceeding ...
-    Will proceed MISC.BP
-    [INFO] \temenos\TAFJ\UD\test2.tcj finished successfully
-    Elapsed time: 1.66 s.
-    [INFO] Command at the line 2: return code "0 (@FM) 0" (as expected)
-    [INFO] Command at the line 9: return code "0 (@FM) 0" (as expected)
-    [INFO] C:\temenos\TAFJ\UD\test.tcj finished successfully
-
-See chapter [parameters](#parameters).
+    Will process MISC.BP
 
 #### runofs
 
 Execute OFS message.
 
     move
-        abbr_id
-        const
-            TEST.FTNAU
+        {abbr_id}
+        const TEST.FTNAU
     runofs
-        ABBREVIATION,/I/PROCESS//0,$USERNAME$/$PASSWORD$,$abbr_id$,ORIGINAL.TEXT::=FUNDS.TRANSFER? E
+        ABBREVIATION,/I/PROCESS//0,{USERNAME}/{PASSWORD},{abbr_id},ORIGINAL.TEXT::=FUNDS.TRANSFER? E
     info
-        $OFSCOMMIT$
-        $OFSOUTPUT$
+        {OFSCOMMIT}
+        {OFSOUTPUT}
 
 Result:
 
     [INFO] 1
     [INFO] TEST.FTNAU/PWOFS241354671155470.00/1,ORIGINAL.TEXT:1:1=FUNDS.TRANSFER, E,CURR.NO:1:1=3,INPUTTER:1:1=46711_TEAMCITY__OFS_PW.MODEL,DATE.TIME:1:1=
-            2405141924,AUTHORISER:1:1=46711_TEAMCITY_OFS_PW.MODEL,CO.CODE:1:1=GB0010001,DEPT.CODE:1:1=1
+            2412141924,AUTHORISER:1:1=46711_TEAMCITY_OFS_PW.MODEL,CO.CODE:1:1=GB0010001,DEPT.CODE:1:1=1
     [INFO] C:\temenos\TAFJ\UD\test.tcj finished successfully
 
 Second run:
@@ -933,31 +947,29 @@ Second run:
     [INFO] TEST.FTNAU/PWOFS241351364755650.01/-1/NO,LIVE RECORD NOT CHANGED
     [INFO] C:\temenos\TAFJ\UD\test.tcj finished successfully
 
-The user has to decide what to do with "0" in \$OFSCOMMIT\$. There are cases when "0" appears after a successful operation (e.g. in applying I function to ENQUIRY.REPORT).
+The user has to decide what to do with "0" in {OFSCOMMIT}. There are cases when "0" appears after a successful operation (e.g. in applying I function to ENQUIRY.REPORT).
 
 #### sleep
 
     move
-        tdate
-        func
-            TIMEDATE()
+        {tdate}
+        func TIMEDATE()
     info
-        $tdate$
+        {tdate}
         Going to sleep 5 seconds
     sleep
         5
     move
-        tdate
-        func
-            TIMEDATE()
+        {tdate}
+        func TIMEDATE()
     info
-        $tdate$
+        {tdate}
 
 Output:
 
-    [INFO] 19:46:55 15 SEP 2025
+    [INFO] 19:46:55 15 DEC 2024
     [INFO] Going to sleep 5 seconds
-    [INFO] 19:47:00 15 SEP 2025
+    [INFO] 19:47:00 15 DEC 2024
 
 #### out
 
@@ -977,22 +989,20 @@ Output information to a text file.
         TAFJAY.OUT
         tcjtest-2.txt
     move
-        tdate_ini
-        func
-            TIMEDATE()
+        {tdate_ini}
+        func TIMEDATE()
     sleep
         5
     move
-        tdate
-        func
-            TIMEDATE()
+        {tdate}
+        func TIMEDATE()
     out
         1
-        $tdate_ini$
+        1>>>{tdate_ini}
     out
         2
-        $tdate_ini$
-        $tdate$
+        2>>>{tdate_ini}
+        2>>>{tdate}
 
 #### precision
 
@@ -1001,19 +1011,17 @@ Invoke PRECISION statement.
     precision
         13
     move
-        rezt
-        func
-            DIVS(1, 3)
+        {rezt}
+        func DIVS(1, 3)
     print
-        $rezt$
+        {rezt}
     precision
         3
     move
-        rezt
-        func
-            DIVS(1, 3)
+        {rezt}
+        func DIVS(1, 3)
     print
-        $rezt$
+        {rezt}
 
 Output:
 
@@ -1030,15 +1038,10 @@ Change a current COMPANY. Necessary if a commit will be used. If not, data can b
         FAU1.INDUSTRY
         123
     move
-        descr
-        field
-            DESCRIPTION
-    move
-        descr
-        const
-            $descr$!
+        {descr}
+        field DESCRIPTION | const @1!
     update
-        DESCRIPTION::=$descr$
+        DESCRIPTION::={descr}
     commit
 
 Get local currency for each company:
@@ -1054,11 +1057,11 @@ Get local currency for each company:
     :strt
     getnext
         CMP
-        cmp_id
+        {cmp_id}
     company
-        $cmp_id$
+        {cmp_id}
     print
-        $cmp_id$ $LCCY$
+        {cmp_id} {LCCY}
     jump
         :strt
     :no_more_CMP
@@ -1071,10 +1074,10 @@ Output:
     COMPANY   Local currency
     ------------------------
     AU0010001 AUD
+    DE0010001 EUR
     GB0010001 USD
     GB0010005 USD
     GB0020001 GBP
-    MX0010001 MXN
     NL0020001 EUR
     US0010001 USD
 
@@ -1112,10 +1115,10 @@ Enter the TAFC/TAFJ debugger.
     -------------------------------------------------------------
     -var              | free-format parameter to supply a
                       | register value, e.g.:
-                      | -var:date:20250915
-                      | -var:name:John#20Dow (mask spaces with #20)
-                      | -var:equ:A#3dB (mask "=" with #3d)
-                      | -var:rec:SPF#3eSYSTEM (mask ">" with #3e)
+                      | -var:{date}:20241230
+                      | -var:{name}:John#20Dow (mask spaces with #20)
+                      | -var:{equ}:A#3dB (mask "=" with #3d)
+                      | -var:{rec}:SPF#3eSYSTEM (mask ">" with #3e)
                       | mask @FM/@VM/@SM as #fe / #fd / #fc
     -------------------------------------------------------------
     -a:<file>         | duplicate all "print" command outputs
@@ -1199,31 +1202,31 @@ Return codes supported by the interpreter:
 ## stdmacros
 
 - {BLANK} - empty string
-- \$COMMA\$ - comma
-- \$DICT\$ - dyn. array with dictionary of table (populated by "read" command)
-- \$DIR\_DELIM\_CH\$ - DIR_DELIM_CH from JBC.h
-- \$EXECRETCODE\$ - return code of EXECUTE in "exec" command (RETURNING)
-- \$EXECRETLIST\$ - return list of EXECUTE in "exec" command (RTNLIST)
-- \$EXECRETDATA\$ - return data of EXECUTE in "exec" command (RTNDATA)
-- \$EXECSCREEN\$ - screen output of executed command (isn't shown on screen by default)
-- \$FM\$ - field mark (ASCII 254)
-- \$ID.COMPANY\$ - ID.COMPANY from I_COMMON
-- \$LCCY\$ - LCCY from I_COMMON
-- \$LF\$ - line feed (ASCII 10)
-- \$LPARENTH\$ - left parentheses (to use in move ... func if it's in parameters)
-- \$LREF\$ - dyn. array with local field names of table (populated by "read" command)
-- \$NEWRECORD\$ - 1 if a record in "read" command is a new one; 0 for existing record
-- \$NUMSEL\$ - number of records in the list after "getlist" command
-- \$OFSCOMMIT\$ - 1 or 0 depending on OFS.BULK.MANAGER result
-- \$OFSOUTPUT\$ - outgoing OFS message
-- \$PASSWORD\$ - user password
-- {PIPE} - "pipe" character
-- \$RECORD\$ - record read by "read" command (initial record; not one after amendments)
-- \$RPARENTH\$ - right parentheses (to use in move ... func if it's in parameters)
-- \$SM\$ - subvalue mark (ASCII 252)
-- \$SPACE\$ - space (ASCII 32)
-- \$TAB\$ - Tab (ASCII 9)
-- \$TM\$ - text mark (ASCII 251)
-- \$TODAY\$ - TODAY from I_COMMON
-- \$USERNAME\$ - T24 user login name
-- \$VM\$ - value mark (ASCII 253)
+- {COMMA} - comma
+- {DICT} - dyn. array with dictionary of table (populated by "read" command)
+- {DIR\_DELIM\_CH} - DIR_DELIM_CH from JBC.h
+- {EXECRETCODE} - return code of EXECUTE in "exec" command (RETURNING)
+- {EXECRETLIST} - return list of EXECUTE in "exec" command (RTNLIST)
+- {EXECRETDATA} - return data of EXECUTE in "exec" command (RTNDATA)
+- {EXECSCREEN} - screen output of executed command (isn't shown on screen by default)
+- {FM} - attribute/field mark (ASCII 254)
+- {ID.COMPANY} - ID.COMPANY from I_COMMON
+- {LCCY} - LCCY from I_COMMON
+- {LF} - line feed (ASCII 10)
+- {LPARENTH} - left parentheses (to use in move ... func if it's in parameters)
+- {LREF} - dyn. array with local field names of table (populated by "read" command)
+- {NEWRECORD} - 1 if a record obtained in "read" command is a new one; 0 for existing record
+- {NUMSEL} - number of records in the list after "getlist" command
+- {OFSCOMMIT} - 1 or 0 depending on OFS.BULK.MANAGER result
+- {OFSOUTPUT} - outgoing OFS message
+- {PASSWORD} - user password
+- {PIPE} - "pipe" character (ASCII 124, also known as "vertical bar")
+- {RECORD} - record read by "read" command (initial record; not one after amendments)
+- {RPARENTH} - right parentheses (to use in move ... func if it's in parameters)
+- {SM} - subvalue mark (ASCII 252)
+- {SPACE} - space (ASCII 32)
+- {TAB} - Tab (ASCII 9)
+- {TM} - text mark (ASCII 251)
+- {TODAY} - TODAY from I_COMMON
+- {USERNAME} - T24 user login name
+- {VM} - value mark (ASCII 253)
