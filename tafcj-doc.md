@@ -53,6 +53,7 @@ A line starting with '#' is a comment.
 
 Similar to variables but can be used anywhere - separately or as a part of other expression (except in commands and labels).
 Any names can be used; it's recommended to enclose names in curly brackets (though other syntax can be chosen).
+Macro names should always be surrounded by non-alpha/digit symbols, e.g. {} or //.
 
     # assign
     move
@@ -1198,6 +1199,7 @@ Return codes supported by the interpreter:
 - 63 Only one set of IF/THEN/ELSE allowed
 - 64 IF: THEN missing
 - 65 IF: ELSE missing
+- 66 Macro names should be surrounded by non-alpha/digit symbols, e.g. {} or //
 
 ## stdmacros
 
