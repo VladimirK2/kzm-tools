@@ -8,7 +8,7 @@ PROGRAM tafcj
     $INSERT I_F.OFS.SOURCE
     $INSERT I_F.OFS.REQUEST.DETAIL
 
-    CRT 'tafcj script interpreter 1.3.1'
+    CRT 'tafcj script interpreter 1.3.2'
 
     GOSUB initvars
     GOSUB parseparams
@@ -1910,7 +1910,6 @@ xecread:
     END
 
     CLEAR_mode = @FALSE
-
     GOSUB ygetnextline
     GOSUB ycheckcmdsyntax
     table_name = SCRIPT_line
@@ -2420,7 +2419,7 @@ ygetnextline:
     ELSE FIRST_space = @FALSE
     SCRIPT_line = TRIM(SCRIPT_line, ' ', 'L')   ;* it's vital to do it before macros substitution - thus we'll keep leading {SPACE}'s
 
-    IF CMD_line NE 'default' AND CMD_line NE 'move' THEN
+    IF NOT(INDEX('/default/move/getnext/', '/' : CMD_line : '/', 1)) THEN
         to_be_replaced = SCRIPT_line
         GOSUB yreplacemacros
         SCRIPT_line = to_be_replaced
@@ -2534,6 +2533,16 @@ yreplacemacros:
 ysetmacro:
 * in: MACRO_name, MACRO_value
 * out: updated MACRO_list, [MACRO_name_list - if it's new]
+
+    macro_first = MACRO_name[1,1]
+    macro_last = MACRO_name[1]
+
+    IF ISALPHA(macro_first) OR ISALPHA(macro_last) OR ISDIGIT(macro_first) OR ISDIGIT(macro_last) THEN
+        ERROR_message = 'Macro name ({1}) is wrong: should be surrounded by non-alpha/non-digit symbols, e.g. {} or //'
+        CHANGE '{1}' TO MACRO_name IN ERROR_message
+        EXIT_code = 66
+        GOSUB doexit
+    END
 
     FIND MACRO_name IN MACRO_name_list SETTING posn ELSE posn = 0
     IF posn EQ 0 THEN
