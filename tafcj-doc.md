@@ -1,10 +1,10 @@
-    # TAFCJ script
+# TAFCJ script
 
 By V.Kazimirchik.
 
 ## Preface
 
-Data management tools used in T24 (e.g. Data Library, BCON) have a certain drawback: they replace a record fully - and this puts a severe limitation to team work with data. Example: 2 developers at the same time amend a HELPTEXT.MENU record....
+Data management tools used in T24 (e.g. Data Library, BCON) have a certain disadvantage: they replace a record fully - and this puts a severe limitation to team work with data. Example: 2 developers at the same time amend a HELPTEXT.MENU record....
 
 TAFCJ script allows conditional update of data records. It's called "TAFCJ" because it works both in TAFC and TAFJ. Script interpreter is a jBC program.
 
@@ -45,15 +45,26 @@ If the script interpreter is run without parameters - the full list of them is b
 
 ## Script elements
 
+### Commands
+
+Commands are case-sensitive. Each command should occupy one line; command options follow on next line(s) with left offset at least 1 space or tab.
+
+### Labels
+
+Labels start with a colon.
+
+    # next line is a label
+    :START
+
 ### Comments
 
 A line starting with '#' is a comment.
 
-### Registers (or macros)
+### Variables
 
-Similar to variables but can be used anywhere - separately or as a part of other expression (except in commands and labels).
+Can be used anywhere - separately or as a part of other expression (except commands and labels).
 Any names can be used; it's recommended to enclose names in curly brackets (though other syntax can be chosen).
-Macro names should always be surrounded by non-alpha/digit symbols, e.g. {} or //.
+Variable names should always be surrounded by non-alpha/digit symbols, e.g. {} or //.
 
     # assign
     move
@@ -71,7 +82,7 @@ Macro names should always be surrounded by non-alpha/digit symbols, e.g. {} or /
     # HelloHelloHello
     # Goodbye cruel world...
 
-There are also "system" (standard) macros that are assigned automatically. Systen macros can't be reassigned. See: [Standard macros](#stdmacros).
+There are also "system" (standard) variables that are assigned automatically. Systen variables can't be reassigned. See: [Standard variables](#stdvars).
 
 Example:
 
@@ -80,14 +91,9 @@ Example:
 
 See also: [move](#move), [print](#print)
 
-### Labels
+### Labels - example
 
-Labels start with a colon.
-
-    # next line is a label
-    :START
-
-Labels are case-sensitive. They can be addressed via a macro (but can't contain a macro themselves):
+Labels are case-sensitive. They can be addressed via a variable (but can't contain a variable in their names):
 
     read
         F.SPF
@@ -114,10 +120,6 @@ See also: [read](#read), [move](#move), [jump](#jump)
 Empty lines are ignored.
 
 Non-ASCII (or extended-ASCII) characters result in fatal error (ASCII 32 to 126 are allowed only). If non-allowed characters are necessary in the data or screen output, function CHAR(nnn) has to be applied.
-
-### Commands
-
-Commands are case-sensitive. Each command should occupy one line; command options follow on next line(s) with left offset at least 1 space or tab.
 
 All examples contain the data from Temenos Model Bank R24 running on Windows Server 2019.
 
@@ -261,7 +263,7 @@ Output:
     [INFO] Command at the line 2: return code "805 (@VM) 1 (@VM) COPY_DONE" (as expected)
     [INFO]  .\test.tcj finished successfully
 
-System macros {EXECSCREEN}, {EXECRETCODE}, {EXECRETDATA} and {EXECRETLIST} are available after "exec" command:
+System variables {EXECSCREEN}, {EXECRETCODE}, {EXECRETDATA} and {EXECRETLIST} are available after "exec" command:
 
     exec
         COPY FROM F.SPF TO &TEMP& ALL OVERWRITING
@@ -290,7 +292,7 @@ Read a record into record buffer. Examples:
 
 A non-existing record can be specified for further population and saving.
 
-After "read" command system macros {RECORD}, {DICT} and {LREF} are available:
+After "read" command system variables {RECORD}, {DICT} and {LREF} are available:
 
     read
         F.ABBREVIATION
@@ -310,7 +312,7 @@ Output:
     [INFO] ORIGINAL.TEXT (@FM) RECORD.STATUS (@FM) CURR.NO (@FM) INPUTTER (@FM) DATE.TIME (@FM) AUTHORISER (@FM) CO.CODE (@FM) DEPT.CODE (@FM) AUDITOR.CODE ...
     [INFO] USRETL.ITEM.TYP (@FM) USRETL.ITEM.VAL (@FM) IS.CONTRACT.REF (@FM) IS.PRODUCT (@FM) IS.COM.SALE.REF (@FM) IS.DISBURSE.REF (@FM) REQUEST.CUST (@FM) HUWRNT.TXN.CODE
 
-To see if a record is a new or existing one the system macro {NEWRECORD} can be used:
+To see if a record is a new or existing one the system variable {NEWRECORD} can be used:
 
     read
         F.HELPTEXT.MENU
@@ -579,7 +581,7 @@ Output:
 
 #### move
 
-Assign a macro.
+Assign a variable.
 
 Keywords:
 
@@ -612,7 +614,7 @@ Output:
 
    (A&nbsp;&nbsp;&nbsp;B&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;C)
 
-See also: [Standard macros](#stdmacros).
+See also: [Standard variables](#stdvars).
 
 ##### field
 
@@ -664,11 +666,11 @@ Notes:
 
 *Function parameters, even strings, are to be specified without quotes, comma-delimited*.
 
-*Only one set of parentheses can be used in function definition. If those are necessary in function parameters, system macros {LPARENTH} and {RPARENTH} are to be used*.
+*Only one set of parentheses can be used in function definition. If those are necessary in function parameters, system variables {LPARENTH} and {RPARENTH} are to be used*.
 
 *Commas in function parameters shall be represented as {COMMA}. Pipes - to {PIPE} (see "Processing several steps" below)*.
 
-*If space is a part of function parameter - system macro {SPACE} is to be used to specify leading or trailing spaces. Spaces inside a parameter are preserved*.
+*If space is a part of function parameter - system variable {SPACE} is to be used to specify leading or trailing spaces. Spaces inside a parameter are preserved*.
 
     move
         {output}
@@ -847,7 +849,7 @@ Script:
 
 ##### Processing several steps
 
-"Pipe" (|) can be used to proceed several steps with the register. Examples:
+"Pipe" (|) can be used to proceed several steps with the variable. Examples:
 
     move
         {var}
@@ -870,7 +872,7 @@ Script:
 
 #### default
 
-Default a macro in case it's not being passed via "-var:" parameter.
+Default a variable in case it's not being passed via "-var:" parameter.
 
 Script test.tcj:
 
@@ -1115,7 +1117,7 @@ Enter the TAFC/TAFJ debugger.
     contains commands "runofs" or "commit" with LIVE / INAU mode.
     -------------------------------------------------------------
     -var              | free-format parameter to supply a
-                      | register value, e.g.:
+                      | variable, e.g.:
                       | -var:{date}:20241230
                       | -var:{name}:John#20Dow (mask spaces with #20)
                       | -var:{equ}:A#3dB (mask "=" with #3d)
@@ -1181,12 +1183,12 @@ Return codes supported by the interpreter:
 - 45 One or both parentheses missing in function definition
 - 46 Only one set of parentheses allowed function definition
 - 47 Function not found in the list of functions with N parameter(s)
-- 48 Uppercase macro can not be reassigned
+- 48 System variable can not be reassigned
 - 49 Error opening F.USER.SIGN.ON.NAME
 - 50 Not valid T24 login name
 - 51 Write to LIVE file failed
 - 52 Cancelled by user
-- 53 Forbidden to redefine internal registers
+- 53 Forbidden to redefine internal variables
 - 54 Wrong syntax
 - 55 Non-numeric PRECISION detected
 - 56 exec - return code not as expected
@@ -1199,9 +1201,9 @@ Return codes supported by the interpreter:
 - 63 Only one set of IF/THEN/ELSE allowed
 - 64 IF: THEN missing
 - 65 IF: ELSE missing
-- 66 Macro names should be surrounded by non-alpha/digit symbols, e.g. {} or //
+- 66 Variable name should be surrounded by non-alpha/digit symbols, e.g. {} or //
 
-## stdmacros
+## stdvars
 
 - {BLANK} - empty string
 - {COMMA} - comma

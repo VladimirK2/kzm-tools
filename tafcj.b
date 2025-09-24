@@ -8,7 +8,7 @@ PROGRAM tafcj
     $INSERT I_F.OFS.SOURCE
     $INSERT I_F.OFS.REQUEST.DETAIL
 
-    CRT 'tafcj script interpreter 1.3.2'
+    CRT 'tafcj script interpreter 1.3.3'
 
     GOSUB initvars
     GOSUB parseparams
@@ -72,7 +72,7 @@ dohelp:
     CRT 'Ones below are optional'
     CRT '-l:<login>             T24 login (needed only if any T24 data is going to be updated)'
     CRT '-p:<password>          T24 password (if T24 login is supplied and password is not - its manual input will be requested)'
-    CRT '-var:{macro}:value     define a macro, e.g. -var:{dayno}:T1'
+    CRT '-var:{name}:value      assign a variable, e.g. -var:{dayno}:T1'
     CRT '-a:<file>              duplicate all "print" command outputs (new file)'
     CRT '-A:<file>              duplicate all "print" command outputs (append to file)'
 
@@ -270,7 +270,7 @@ parseparams:
 
             FIND MACRO_name IN MACRO_name_list SETTING posn ELSE posn = 0
             IF posn GT 0 THEN
-                ERROR_message = 'Forbidden to redefine internal registers'
+                ERROR_message = 'Forbidden to redefine internal variables'
                 EXIT_code = 53
                 GOSUB doexit
             END
@@ -2538,7 +2538,7 @@ ysetmacro:
     macro_last = MACRO_name[1]
 
     IF ISALPHA(macro_first) OR ISALPHA(macro_last) OR ISDIGIT(macro_first) OR ISDIGIT(macro_last) THEN
-        ERROR_message = 'Macro name ({1}) is wrong: should be surrounded by non-alpha/non-digit symbols, e.g. {} or //'
+        ERROR_message = 'Variable name ({1}) is wrong: should be surrounded by non-alpha/non-digit symbols, e.g. {} or //'
         CHANGE '{1}' TO MACRO_name IN ERROR_message
         EXIT_code = 66
         GOSUB doexit
@@ -2552,7 +2552,7 @@ ysetmacro:
         MACRO_name_list<-1> = MACRO_name
     END ELSE
         IF posn LE MACRO_sys_qty THEN
-            ERROR_message = 'System-level macro ({1}) can not be reassigned'
+            ERROR_message = 'System-level variable ({1}) can not be reassigned'
             CHANGE '{1}' TO MACRO_name IN ERROR_message
             EXIT_code = 48
             GOSUB doexit
