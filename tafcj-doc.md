@@ -6,7 +6,15 @@ By V.Kazimirchik.
 
 Data management tools used in T24 (e.g. Data Library, BCON) have a certain disadvantage: they replace a record fully - and this puts a severe limitation to team work with data. Example: 2 developers at the same time amend a HELPTEXT.MENU record....
 
-TAFCJ script allows conditional update of data records. It's called "TAFCJ" because it works both in TAFC and TAFJ. Script interpreter is a jBC program.
+TAFCJ script, among other things, allows conditional update of data records. It can be used for:
+
+- Delivery of local developments.
+- Patches.
+- Prototyping.
+- Data extraction / reports.
+- Data migration.
+
+It's called "TAFCJ" because it works both in TAFC and TAFJ. Script interpreter is a jBC program.
 
 ## Is it safe assuming T24 transactions, concat files update etc?
 
@@ -970,9 +978,9 @@ The user has to decide what to do with "0" in {OFSCOMMIT}. There are cases when 
 
 Output:
 
-    [INFO] 19:46:55 15 DEC 2024
+    [INFO] 19:46:55 15 SEP 2025
     [INFO] Going to sleep 5 seconds
-    [INFO] 19:47:00 15 DEC 2024
+    [INFO] 19:47:00 15 SEP 2025
 
 #### out
 
@@ -1118,7 +1126,7 @@ Enter the TAFC/TAFJ debugger.
     -------------------------------------------------------------
     -var              | free-format parameter to supply a
                       | variable, e.g.:
-                      | -var:{date}:20241230
+                      | -var:{date}:20250915
                       | -var:{name}:John#20Dow (mask spaces with #20)
                       | -var:{equ}:A#3dB (mask "=" with #3d)
                       | -var:{rec}:SPF#3eSYSTEM (mask ">" with #3e)
