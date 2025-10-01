@@ -8,7 +8,7 @@ PROGRAM tafcj
     $INSERT I_F.OFS.SOURCE
     $INSERT I_F.OFS.REQUEST.DETAIL
 
-    CRT 'tafcj script interpreter 1.3.3'
+    CRT 'tafcj script interpreter 1.4.0'
 
     GOSUB initvars
     GOSUB parseparams
@@ -146,32 +146,32 @@ initvars:
 
     LBL_list = ''  ;  LBL_posn_list = ''  ;  LBL_togo = ''
 
-    MACRO_name_list = '{TODAY}' :@FM: '{LCCY}' :@FM: '{ID.COMPANY}' :@FM: '{FM}' :@FM: '{VM}' :@FM: '{SM}' :@FM: '{TM}' :@FM: '{SPACE}' :@FM: '{BLANK}' :@FM: '{RECORD}'
-    MACRO_name_list := @FM: '{EXECSCREEN}' :@FM: '{EXECRETCODE}' :@FM: '{EXECRETDATA}' :@FM: '{EXECRETLIST}' :@FM: '{LF}' :@FM: '{TAB}' :@FM: '{DIR_DELIM_CH}'
-    MACRO_name_list := @FM: '{COMMA}' :@FM: '{LPARENTH}' :@FM: '{RPARENTH}' :@FM: '{USERNAME}' :@FM: '{PASSWORD}' :@FM: '{OFSCOMMIT}' :@FM: '{OFSOUTPUT}'
+    VARR_name_list = '{TODAY}' :@FM: '{LCCY}' :@FM: '{ID.COMPANY}' :@FM: '{FM}' :@FM: '{VM}' :@FM: '{SM}' :@FM: '{TM}' :@FM: '{SPACE}' :@FM: '{BLANK}' :@FM: '{RECORD}'
+    VARR_name_list := @FM: '{EXECSCREEN}' :@FM: '{EXECRETCODE}' :@FM: '{EXECRETDATA}' :@FM: '{EXECRETLIST}' :@FM: '{LF}' :@FM: '{TAB}' :@FM: '{DIR_DELIM_CH}'
+    VARR_name_list := @FM: '{COMMA}' :@FM: '{LPARENTH}' :@FM: '{RPARENTH}' :@FM: '{USERNAME}' :@FM: '{PASSWORD}' :@FM: '{OFSCOMMIT}' :@FM: '{OFSOUTPUT}'
 * 25th - ...
-    MACRO_name_list := @FM: '{DICT}' :@FM: '{LREF}' :@FM: '{NEWRECORD}' :@FM: '{NUMSEL}' :@FM: '{PIPE}'
+    VARR_name_list := @FM: '{DICT}' :@FM: '{LREF}' :@FM: '{NEWRECORD}' :@FM: '{NUMSEL}' :@FM: '{PIPE}'
 
-    MACRO_sys_qty = DCOUNT(MACRO_name_list, @FM)
+    VARR_sys_qty = DCOUNT(VARR_name_list, @FM)
 
-    DIM MACRO_list(MACRO_sys_qty)     ;* will expand dynamically
-    MAT MACRO_list = ''
-    MACRO_name = ''
-    MACRO_value = ''
+    DIM VARR_list(VARR_sys_qty)     ;* will expand dynamically
+    MAT VARR_list = ''
+    VARR_name = ''
+    VARR_value = ''
 
-    MACRO_list(4) = @FM
-    MACRO_list(5) = @VM
-    MACRO_list(6) = @SM
-    MACRO_list(7) = @TM
-    MACRO_list(8) = ' '
-    MACRO_list(15) = CHAR(10)
-    MACRO_list(16) = CHAR(9)
-    MACRO_list(17) = DIR_DELIM_CH
-    MACRO_list(18) = ','
-    MACRO_list(19) = '('
-    MACRO_list(20) = ')'
-    MACRO_list(27) = -1    ;*  avoid accidental usage before read command
-    MACRO_list(29) = '|'
+    VARR_list(4) = @FM
+    VARR_list(5) = @VM
+    VARR_list(6) = @SM
+    VARR_list(7) = @TM
+    VARR_list(8) = ' '
+    VARR_list(15) = CHAR(10)
+    VARR_list(16) = CHAR(9)
+    VARR_list(17) = DIR_DELIM_CH
+    VARR_list(18) = ','
+    VARR_list(19) = '('
+    VARR_list(20) = ')'
+    VARR_list(27) = -1    ;*  avoid accidental usage before read command
+    VARR_list(29) = '|'
 
     OFS_msg = ''  ;  FAIL_on_err = @FALSE  ;  DEL_on_err = @FALSE
     OFS_commit_ok = @FALSE  ;  OFS_output = ''
@@ -184,6 +184,7 @@ initvars:
     PORT_no = SYSTEM(18)
 
     RECORD_curr = ''
+    RECORD_curr_varr_name = '{RECORDCURR}'   ;* a special one
     RECORD_curr_init = ''
     RECORD_id_curr = ''
     RECORD_is_new = @FALSE
@@ -259,29 +260,29 @@ parseparams:
 
         BEGIN CASE
         CASE par_name EQ '-var'
-            MACRO_name = FIELD(a_param, ':', 2)
-            MACRO_value = FIELD(a_param, ':', 3, 99999)
-            CHANGE '#20' TO ' ' IN MACRO_value
-            CHANGE '#3e' TO '>' IN MACRO_value
-            CHANGE '#3d' TO '=' IN MACRO_value
-            CHANGE '#fe' TO @FM IN MACRO_value
-            CHANGE '#fd' TO @VM IN MACRO_value
-            CHANGE '#fc' TO @SM IN MACRO_value
+            VARR_name = FIELD(a_param, ':', 2)
+            VARR_value = FIELD(a_param, ':', 3, 99999)
+            CHANGE '#20' TO ' ' IN VARR_value
+            CHANGE '#3e' TO '>' IN VARR_value
+            CHANGE '#3d' TO '=' IN VARR_value
+            CHANGE '#fe' TO @FM IN VARR_value
+            CHANGE '#fd' TO @VM IN VARR_value
+            CHANGE '#fc' TO @SM IN VARR_value
 
-            FIND MACRO_name IN MACRO_name_list SETTING posn ELSE posn = 0
+            FIND VARR_name IN VARR_name_list SETTING posn ELSE posn = 0
             IF posn GT 0 THEN
                 ERROR_message = 'Forbidden to redefine internal variables'
                 EXIT_code = 53
                 GOSUB doexit
             END
 
-            val_for_info = MACRO_value
+            val_for_info = VARR_value
             CHANGE @FM TO ' (@FM) ' IN val_for_info
             CHANGE @VM TO ' (@VM) ' IN val_for_info
             CHANGE @SM TO ' (@SM) ' IN val_for_info
-            PARAM_info<-1> = MACRO_name : ' = ' : DQUOTE(val_for_info)
+            PARAM_info<-1> = VARR_name : ' = ' : DQUOTE(val_for_info)
 
-            GOSUB ysetmacro
+            GOSUB ysetvarr
 
         CASE par_name EQ '-a' OR par_name EQ '-A'   ;*  duplicate all alerts to file
 
@@ -386,8 +387,8 @@ parseparams:
         END
     END
 
-    MACRO_list(21) = T24_login
-    MACRO_list(22) = T24_passwd
+    VARR_list(21) = T24_login
+    VARR_list(22) = T24_passwd
 
     RETURN
 
@@ -539,7 +540,7 @@ runscript:
         CASE CMD_line EQ 'commit'      ;     GOSUB xeccommit
         CASE CMD_line EQ 'company'     ;     GOSUB xeccompany
         CASE CMD_line EQ 'debug'       ;     DEBUG
-        CASE CMD_line EQ 'default'     ;     GOSUB xecmove    ;* 1 section, 2 commands
+        CASE CMD_line EQ 'default'     ;     GOSUB xeclet    ;* 1 section, 2 commands
         CASE CMD_line EQ 'delete'      ;     GOSUB xecdelete
         CASE CMD_line EQ 'exec'        ;     GOSUB xecexec
         CASE CMD_line EQ 'exit'        ;     GOSUB xecexit
@@ -547,7 +548,7 @@ runscript:
         CASE CMD_line EQ 'getlist'     ;     GOSUB xecgetlist
         CASE CMD_line EQ 'getnext'     ;     GOSUB xecgetnext
         CASE CMD_line EQ 'jump'        ;     GOSUB xecjump
-        CASE CMD_line EQ 'move'        ;     GOSUB xecmove
+        CASE CMD_line EQ 'let'         ;     GOSUB xeclet
         CASE CMD_line EQ 'out'         ;     GOSUB xecout
         CASE CMD_line EQ 'outfile'     ;     GOSUB xecoutfile
         CASE CMD_line EQ 'precision'   ;     GOSUB xecprecision
@@ -949,10 +950,10 @@ xecexec:
 
     EXECUTE exec_cmd CAPTURING exec_screen RETURNING exec_ret_code RTNDATA exec_ret_data RTNLIST exec_ret_list
     CHANGE @FM TO CHAR(10) IN exec_screen
-    MACRO_list(11) = exec_screen
-    MACRO_list(12) = exec_ret_code
-    MACRO_list(13) = exec_ret_data
-    MACRO_list(14) = exec_ret_list
+    VARR_list(11) = exec_screen
+    VARR_list(12) = exec_ret_code
+    VARR_list(13) = exec_ret_data
+    VARR_list(14) = exec_ret_list
 
     IF check_ret_code AND exec_ret_code NE exp_ret_code THEN
         ERROR_message = 'Command at the line {1}: return code "{2}", expected: "{3}". Screen output:'
@@ -1060,7 +1061,7 @@ xecgetlist:
         GOSUB doexit
     END
 
-    MACRO_list(28) = num_sel
+    VARR_list(28) = num_sel
 
     RETURN
 
@@ -1077,7 +1078,7 @@ xecgetnext:
         GOSUB doexit
     END
 
-    READNEXT MACRO_value FROM SELECT_list(posn) ELSE
+    READNEXT VARR_value FROM SELECT_list(posn) ELSE
         LBL_togo = ':no_more_' : sel_list_name    ;* default one
         GOSUB yjump
         RETURN
@@ -1085,8 +1086,8 @@ xecgetnext:
 
     GOSUB ygetnextline
     GOSUB ycheckcmdsyntax
-    MACRO_name = SCRIPT_line
-    GOSUB ysetmacro
+    VARR_name = SCRIPT_line
+    GOSUB ysetvarr
 
     RETURN
 
@@ -1101,7 +1102,7 @@ xecjump:
     RETURN
 
 *----------------------------------------------------------------------------------------------------------------------------------
-xecmove:
+xeclet:
 
     cmds_qty = 0
     LOOP
@@ -1117,11 +1118,8 @@ xecmove:
             END
         END
 
-        MACRO_name = SCRIPT_line
-
-        GOSUB ygetnextline
-        GOSUB ycheckcmdsyntax
-        eval_list = SCRIPT_line
+        VARR_name = TRIM( FIELD(SCRIPT_line, '=', 1 ), ' ', 'B')
+        eval_list = TRIM( FIELD(SCRIPT_line, '=', 2, 999999 ), ' ', 'B')
 
         CHANGE '|' TO @FM IN eval_list
         eval_qty = DCOUNT(eval_list, @FM)
@@ -1143,19 +1141,19 @@ xecmove:
             END
 
             IF eval_keyword NE 'func' AND eval_keyword NE 'if' THEN   ;* parse parameters later - could be commas, spaces or parentheses in data
-                FOR i_macro = i_eval - 1 TO 1 STEP -1  ;* replace @11 earlier than @1
-                    CHANGE '@' : i_macro TO eval_data(i_macro) IN eval_body
-                NEXT i_macro
+                FOR i_varr = i_eval - 1 TO 1 STEP -1  ;* replace @11 earlier than @1
+                    CHANGE '@' : i_varr TO eval_data(i_varr) IN eval_body
+                NEXT i_varr
 
                 to_be_replaced = eval_body
-                GOSUB yreplacemacros
+                GOSUB yreplacevarrs
                 eval_body = to_be_replaced
             END
 
             skip_cmd = @FALSE
 
             IF CMD_line EQ 'default' THEN   ;* don't do it if it's already assigned
-                FIND MACRO_name IN MACRO_name_list SETTING posn ELSE posn = 0
+                FIND VARR_name IN VARR_name_list SETTING posn ELSE posn = 0
                 IF posn GT 0 THEN skip_cmd = @TRUE  ;   BREAK
             END
 
@@ -1176,24 +1174,24 @@ xecmove:
                 if_then = if_then_else<5>
                 if_else = if_then_else<7>
 
-                FOR i_macro = i_eval - 1 TO 1 STEP -1
-                    CHANGE '@' : i_macro TO eval_data(i_macro) IN if_one
-                    CHANGE '@' : i_macro TO eval_data(i_macro) IN if_two
-                    CHANGE '@' : i_macro TO eval_data(i_macro) IN if_then
-                    CHANGE '@' : i_macro TO eval_data(i_macro) IN if_else
-                NEXT i_macro
+                FOR i_varr = i_eval - 1 TO 1 STEP -1
+                    CHANGE '@' : i_varr TO eval_data(i_varr) IN if_one
+                    CHANGE '@' : i_varr TO eval_data(i_varr) IN if_two
+                    CHANGE '@' : i_varr TO eval_data(i_varr) IN if_then
+                    CHANGE '@' : i_varr TO eval_data(i_varr) IN if_else
+                NEXT i_varr
 
                 to_be_replaced = if_one
-                GOSUB yreplacemacros
+                GOSUB yreplacevarrs
                 if_one = to_be_replaced
                 to_be_replaced = if_two
-                GOSUB yreplacemacros
+                GOSUB yreplacevarrs
                 if_two = to_be_replaced
                 to_be_replaced = if_then
-                GOSUB yreplacemacros
+                GOSUB yreplacevarrs
                 if_then = to_be_replaced
                 to_be_replaced = if_else
-                GOSUB yreplacemacros
+                GOSUB yreplacevarrs
                 if_else = to_be_replaced
 
                 if_oper = DOWNCASE(if_then_else<2>)
@@ -1289,7 +1287,7 @@ xecmove:
                 END CASE
 
                 to_be_replaced = func_name
-                GOSUB yreplacemacros
+                GOSUB yreplacevarrs
                 func_name = to_be_replaced
 
                 IF NOT(INDEX(FUNC_args<args_qty+1>, '_' : func_name : '_', 1)) THEN
@@ -1307,12 +1305,12 @@ xecmove:
                     the_arg = TRIM(FIELD(args_raw_list, ',' , i_arg), ' ', 'B')   ;* keep spaces inside
 
                     to_be_replaced = the_arg
-                    GOSUB yreplacemacros
+                    GOSUB yreplacevarrs
                     the_arg = to_be_replaced
 
-                    FOR i_macro = i_eval - 1 TO 1 STEP -1  ;* replace @11 earlier than @1
-                        CHANGE '@' : i_macro TO eval_data(i_macro) IN the_arg
-                    NEXT i_macro
+                    FOR i_varr = i_eval - 1 TO 1 STEP -1  ;* replace @11 earlier than @1
+                        CHANGE '@' : i_varr TO eval_data(i_varr) IN the_arg
+                    NEXT i_varr
 
                     args_list(i_arg) = the_arg
 
@@ -1769,15 +1767,15 @@ xecmove:
             END CASE
 
             to_be_replaced = eval_out
-            IF eval_keyword NE 'func' THEN GOSUB yreplacemacros
+            IF eval_keyword NE 'func' THEN GOSUB yreplacevarrs
             eval_data(i_eval) = to_be_replaced
 
         NEXT i_eval
 
         IF skip_cmd THEN CONTINUE
 
-        MACRO_value = eval_data(eval_qty)   ;* taking the last one
-        GOSUB ysetmacro
+        VARR_value = eval_data(eval_qty)   ;* taking the last one
+        GOSUB ysetvarr
 
     REPEAT
 
@@ -1938,8 +1936,8 @@ xecread:
 
     END ELSE
         FILE_no_curr = posn
-        MACRO_list(25) = DICT_list(FILE_no_curr)
-        MACRO_list(26) = DICT_list_lref(FILE_no_curr)
+        VARR_list(25) = DICT_list(FILE_no_curr)
+        VARR_list(26) = DICT_list_lref(FILE_no_curr)
         FIND 'RECORD.STATUS' IN DICT_list(FILE_no_curr) SETTING REC_STAT_posn ELSE REC_STAT_posn = 0
         FIND 'OVERRIDE' IN DICT_list(FILE_no_curr) SETTING OVERRIDE_posn ELSE OVERRIDE_posn = 0
         FIND 'LOCAL.REF' IN DICT_list(FILE_no_curr) SETTING LOCREF_posn ELSE LOCREF_posn = 0
@@ -1963,10 +1961,10 @@ xecread:
     IF OVERRIDE_posn THEN RECORD_curr<OVERRIDE_posn> = ''  ;* we won't have OVERRIDEs on amended record in case of "clear" so comparison would fail to see non-changed record
 
     RECORD_curr_init = RECORD_curr   ;* for comparison before commit
-    MACRO_list(10) = RECORD_curr   ;* can be addressed as {RECORD}
+    VARR_list(10) = RECORD_curr   ;* can be addressed as {RECORD}
 
-    IF RECORD_is_new THEN MACRO_list(27) = 1
-    ELSE MACRO_list(27) = 0
+    IF RECORD_is_new THEN VARR_list(27) = 1
+    ELSE VARR_list(27) = 0
 
     RETURN
 
@@ -2294,8 +2292,8 @@ ygetdict:
     DICT_list(FILE_no_curr) = dict_sel_list
     DICT_list_lref(FILE_no_curr) = dict_sel_list_lref
 
-    MACRO_list(25) = dict_sel_list   ;* can be addressed as {DICT}
-    MACRO_list(26) = dict_sel_list_lref   ;* can be addressed as {LREF}
+    VARR_list(25) = dict_sel_list   ;* can be addressed as {DICT}
+    VARR_list(26) = dict_sel_list_lref   ;* can be addressed as {LREF}
 
     FIND 'LOCAL.REF' IN DICT_list(FILE_no_curr) SETTING LOCREF_posn ELSE LOCREF_posn = 0
 
@@ -2417,11 +2415,11 @@ ygetnextline:
 
     IF first_char EQ ' ' THEN FIRST_space = @TRUE
     ELSE FIRST_space = @FALSE
-    SCRIPT_line = TRIM(SCRIPT_line, ' ', 'L')   ;* it's vital to do it before macros substitution - thus we'll keep leading {SPACE}'s
+    SCRIPT_line = TRIM(SCRIPT_line, ' ', 'L')   ;* it's vital to do it before vars substitution - thus we'll keep leading {SPACE}'s
 
-    IF NOT(INDEX('/default/move/getnext/', '/' : CMD_line : '/', 1)) THEN
+    IF NOT(INDEX('/default/let/getnext/', '/' : CMD_line : '/', 1)) THEN
         to_be_replaced = SCRIPT_line
-        GOSUB yreplacemacros
+        GOSUB yreplacevarrs
         SCRIPT_line = to_be_replaced
     END
 
@@ -2477,8 +2475,8 @@ ylaunchofs:
     HUSH OFF
 
     OFS_commit_ok = commit_successful
-    MACRO_list(23) = OFS_commit_ok
-    MACRO_list(24) = OFS_output
+    VARR_list(23) = OFS_commit_ok
+    VARR_list(24) = OFS_output
 
     IF NOT(OFS_commit_ok) AND DEL_on_err THEN
         DELETE f_nau, RECORD_id_curr ON ERROR NULL
@@ -2501,9 +2499,9 @@ yloadcompany:
 * in: COMPANY_curr
 
     CALL LOAD.COMPANY(COMPANY_curr)
-    MACRO_list(1) = TODAY
-    MACRO_list(2) = LCCY
-    MACRO_list(3) = ID.COMPANY
+    VARR_list(1) = TODAY
+    VARR_list(2) = LCCY
+    VARR_list(3) = ID.COMPANY
 
     RETURN
 
@@ -2518,48 +2516,51 @@ yprocalertmsg:
     RETURN
 
 *-------------------------------------------------------------------------------------
-yreplacemacros:
+yreplacevarrs:
 * in/out: to_be_replaced
-    macro_qty = INMAT(MACRO_list)
-    FOR i = 1 TO macro_qty
-        macro_spec = MACRO_name_list<i>
-        macro_val = MACRO_list(i)
-        IF INDEX(to_be_replaced, macro_spec, 1) THEN CHANGE macro_spec TO macro_val IN to_be_replaced
+    varr_qty = INMAT(VARR_list)
+    FOR i = 1 TO varr_qty
+        varr_spec = VARR_name_list<i>
+        varr_val = VARR_list(i)
+        IF INDEX(to_be_replaced, varr_spec, 1) THEN CHANGE varr_spec TO varr_val IN to_be_replaced
     NEXT i
+
+* special one - changes in so many places so it's easier to proceed it only here
+    IF INDEX(to_be_replaced, RECORD_curr_varr_name, 1) THEN CHANGE RECORD_curr_varr_name TO RECORD_curr IN to_be_replaced
 
     RETURN
 
 *----------------------------------------------------------------------------------------------------------------------------------
-ysetmacro:
-* in: MACRO_name, MACRO_value
-* out: updated MACRO_list, [MACRO_name_list - if it's new]
+ysetvarr:
+* in: VARR_name, VARR_value
+* out: updated VARR_list, [VARR_name_list - if it's new]
 
-    macro_first = MACRO_name[1,1]
-    macro_last = MACRO_name[1]
+    varr_first = VARR_name[1,1]
+    varr_last = VARR_name[1]
 
-    IF ISALPHA(macro_first) OR ISALPHA(macro_last) OR ISDIGIT(macro_first) OR ISDIGIT(macro_last) THEN
+    IF ISALPHA(varr_first) OR ISALPHA(varr_last) OR ISDIGIT(varr_first) OR ISDIGIT(varr_last) THEN
         ERROR_message = 'Variable name ({1}) is wrong: should be surrounded by non-alpha/non-digit symbols, e.g. {} or //'
-        CHANGE '{1}' TO MACRO_name IN ERROR_message
+        CHANGE '{1}' TO VARR_name IN ERROR_message
         EXIT_code = 66
         GOSUB doexit
     END
 
-    FIND MACRO_name IN MACRO_name_list SETTING posn ELSE posn = 0
+    FIND VARR_name IN VARR_name_list SETTING posn ELSE posn = 0
     IF posn EQ 0 THEN
-        posn = INMAT(MACRO_list)
+        posn = INMAT(VARR_list)
         posn ++
-        DIM MACRO_list(posn)
-        MACRO_name_list<-1> = MACRO_name
+        DIM VARR_list(posn)
+        VARR_name_list<-1> = VARR_name
     END ELSE
-        IF posn LE MACRO_sys_qty THEN
+        IF posn LE VARR_sys_qty OR VARR_name EQ RECORD_curr_varr_name THEN
             ERROR_message = 'System-level variable ({1}) can not be reassigned'
-            CHANGE '{1}' TO MACRO_name IN ERROR_message
+            CHANGE '{1}' TO VARR_name IN ERROR_message
             EXIT_code = 48
             GOSUB doexit
         END
     END
 
-    MACRO_list(posn) = MACRO_value
+    VARR_list(posn) = VARR_value
 
     RETURN
 
