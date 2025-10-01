@@ -9,6 +9,7 @@ Data management tools used in T24 (e.g. Data Library, BCON) have a certain disad
 TAFCJ script, among other things, allows conditional update of data records. It can be used for:
 
 - Delivery of local developments.
+- Tests.
 - Patches.
 - Prototyping.
 - Data extraction / reports.
@@ -75,11 +76,9 @@ Any names can be used; it's recommended to enclose names in curly brackets (thou
 Variable names should always be surrounded by non-alpha/digit symbols, e.g. {} or //.
 
     # assign
-    move
-        {abc}
-        const Hello
-        /by/
-        const bye
+    let
+        {abc} = const Hello
+        /by/ = const bye
     # use
     print
         {abc} World!
@@ -97,7 +96,7 @@ Example:
     print
         {TODAY}
 
-See also: [move](#move), [print](#print)
+See also: [let](#let), [print](#print)
 
 ### Labels - example
 
@@ -106,9 +105,8 @@ Labels are case-sensitive. They can be addressed via a variable (but can't conta
     read
         F.SPF
         SYSTEM
-    move
-        {t24rel}
-        field CURRENT.RELEASE
+    let
+        {t24rel} = field CURRENT.RELEASE
     jump
         :proc_{t24rel}
     :proc_R19
@@ -121,7 +119,7 @@ Labels are case-sensitive. They can be addressed via a variable (but can't conta
         Newer release
     :fini
 
-See also: [read](#read), [move](#move), [jump](#jump)
+See also: [read](#read), [let](#let), [jump](#jump)
 
 ### Other notes
 
@@ -133,7 +131,7 @@ All examples contain the data from Temenos Model Bank R24 running on Windows Ser
 
 ### Commands (alphabetical index)
 
-[clear](#clear) | [clone](#clone) | [commit](#commit) | [company](#company) | [debug](#debug)  | [default](#default) | [delete](#delete) | [error](#error) | [exec](#exec)  | [exit](#exit) | [formlist](#formlist) | [getlist](#getlist) | [getnext](#getnext) | [jump](#jump) | [info](#info) | [move](#move) | [out](#out) / [outfile](#outfile) | [precision](#precision) | [print](#print) | [read](#read) | [runofs](#runofs) | [select](#select) | [sleep](#sleep) | [update](#update) | [warn](#warn)
+[clear](#clear) | [clone](#clone) | [commit](#commit) | [company](#company) | [debug](#debug)  | [default](#default) | [delete](#delete) | [error](#error) | [exec](#exec)  | [exit](#exit) | [formlist](#formlist) | [getlist](#getlist) | [getnext](#getnext) | [jump](#jump) | [info](#info) | [let](#let) | [out](#out) / [outfile](#outfile) | [precision](#precision) | [print](#print) | [read](#read) | [runofs](#runofs) | [select](#select) | [sleep](#sleep) | [update](#update) | [warn](#warn)
 
 ### Commands (in the order that allows better learning process)
 
@@ -155,9 +153,8 @@ Useful for interaction with user.
 
 jBASE delimiters are masked in the screen output, e.g.:
 
-    move
-        {var}
-        const 123{FM}456
+    let
+        {var} = const 123{FM}456
     print
         {var}
 
@@ -490,15 +487,12 @@ Or:
 Pass execution to a line after specified label.
 
     # do something 5 times
-    move
-        {cntr}
-        const 0
+    let
+        {cntr} = const 0
     :strt
-    move
-        {cntr}
-        func ADDS({cntr}, 1)
-        {01}
-        func LE({cntr}, 5)
+    let
+        {cntr} = func ADDS({cntr}, 1)
+        {01} = func LE({cntr}, 5)
     jump
         :proc{01}
     :proc1
@@ -509,7 +503,7 @@ Pass execution to a line after specified label.
     :proc0
     # finish
 
-See also: [move](#move).
+See also: [let](#let).
 
 #### select
 
@@ -587,7 +581,7 @@ Output:
 
 *Numbered lists are not supported.*
 
-#### move
+#### let
 
 Assign a variable.
 
@@ -597,12 +591,10 @@ Keywords:
 
 A constant:
 
-    move
-        {zero}
-        const 0
+    let
+        {zero} = const 0
     # create a dynamic array
-        {array}
-        const A{FM}BB{VM}CCC{SM}{zero}
+        {array} = const A{FM}BB{VM}CCC{SM}{zero}
     print
         {array}
 
@@ -612,9 +604,8 @@ Output:
 
 *Note: spaces in "const" instructions are preserved, e.g.:*
 
-    move
-        {var}
-        const (A   B     C)
+    let
+        {var} = const (A   B     C)
     print
         {var}
 
@@ -629,11 +620,9 @@ See also: [Standard variables](#stdvars).
     read
         FBNK.CUSTOMER
         100100
-    move
-        {tc}
-        field TOWN.COUNTRY
-        {mname}
-        field PRIVACY.STATUS
+    let
+        {tc} = field TOWN.COUNTRY
+        {mname} = field PRIVACY.STATUS
     print
         {tc}, {mname}
 
@@ -645,9 +634,8 @@ Core field can also be addressed by its number:
     read
         FBNK.CUSTOMER
         100100
-    move
-        {tc}
-        field 7
+    let
+        {tc} = field 7
 
 ##### func
 
@@ -660,11 +648,9 @@ Examples:
     read
         F.SPF
         SYSTEM
-    move
-        {prods}
-        field PRODUCTS
-        {qty}
-        func DCOUNT({prods}, {VM})
+    let
+        {prods} = field PRODUCTS
+        {qty} = func DCOUNT({prods}, {VM})
     print
         {qty}
 
@@ -676,13 +662,12 @@ Notes:
 
 *Only one set of parentheses can be used in function definition. If those are necessary in function parameters, system variables {LPARENTH} and {RPARENTH} are to be used*.
 
-*Commas in function parameters shall be represented as {COMMA}. Pipes - to {PIPE} (see "Processing several steps" below)*.
+*Commas in function parameters shall be represented as {COMMA}. Pipes - as {PIPE} (see "Processing several steps" below)*.
 
 *If space is a part of function parameter - system variable {SPACE} is to be used to specify leading or trailing spaces. Spaces inside a parameter are preserved*.
 
-    move
-        {output}
-        func MATCHES( FT250172HQJ4, 'F'1A5N5X )
+    let
+        {output} = func MATCHES( FT250172HQJ4, 'F'1A5N5X )
     print
         Result: {output}
 
@@ -695,47 +680,40 @@ More examples:
     read
         FBNK.ACCOUNT
         {DUMMY}
-    move
-        {finfo}
-        func FILEINFO()
-        {ftype}
-        func EXTRACT( {finfo}, 21 )
+    let
+        {finfo} = func FILEINFO()
+        {ftype} = func EXTRACT( {finfo}, 21 )
     print
         {ftype}
     # output: XMLMSSQL
 
-    move
-        {outp}
-        func CONVERT(CEYZ, +-*{COMMA}, ABCCCDEFCDYZ)
+    let
+        {outp} = func CONVERT(CEYZ, +-*{COMMA}, ABCCCDEFCDYZ)
     print
         {outp}
     # output: AB+++D-F+D*,
 
-    move
-        {var}
-        func DQUOTE( A   B     C)
+    let
+        {var} = func DQUOTE( A   B     C)
     print
         {var}
     # output: "A   B     C"
 
-    move
-        {var}
-        func DQUOTE( {SPACE}{SPACE}A B     C{SPACE})
+    let
+        {var} = func DQUOTE( {SPACE}{SPACE}A B     C{SPACE})
     print
         {var}
     # output: "  A B     C "
 
 In this example conditional TAFC/TAFJ script lines are shown:
 
-    move
-        {func_name}
-        const GETENV
+    let
+        {func_name} = const GETENV
     print
         Testing {func_name}() ...
-    move
-        {rezt}
-    =TAFC func {func_name}( TAFC_HOME )
-    =TAFJ func {func_name}( TAFJ_HOME )
+    let
+    =TAFC {rezt} = func {func_name}( TAFC_HOME )
+    =TAFJ {rezt} = func {func_name}( TAFJ_HOME )
     print
         {rezt}
 
@@ -753,24 +731,18 @@ Output (TAFJ):
         F.HELPTEXT.MENU
     =TAFC    AC.MENU
     =TAFJ    ACCOUNT.ENTRY
-    move
-        {appl}
-        field APPLICATION
-        {tofind}
-    =TAFC const ACCOUNT.STATEMENT
-    =TAFJ const ENQ ACCT.STMT.HIST
-        {found}
-        func FIND( {tofind}, {appl} )
+    let
+        {appl} = field APPLICATION
+    =TAFC    {tofind} = const ACCOUNT.STATEMENT
+    =TAFJ    {tofind} = const ENQ ACCT.STMT.HIST
+        {found} = func FIND( {tofind}, {appl} )
     print
         {found}
 
-    move
-        {random}
-        func RND(100000)
-        {tofind}
-        const ACCOUNT, I {random}
-        {found}
-        func FIND( {tofind}, {appl} )
+    let
+        {random} = func RND(100000)
+        {tofind} = const ACCOUNT, I {random}
+        {found} = func FIND( {tofind}, {appl} )
 
     print
         {random} found? => {found}
@@ -782,17 +754,14 @@ Output example:
 
 *Pseudo-functions INS() and DEL(); example:*
 
-    move
-        {in_array}
-        const 1{FM}2{FM}3
-        {out_array}
-        func INS(4, {in_array}, 2)
+    let
+        {in_array} = const 1{FM}2{FM}3
+        {out_array} = func INS(4, {in_array}, 2)
     print
         {out_array}
 
-    move
-        {out_array}
-        func DEL({in_array}, 2)
+    let
+        {out_array} = func DEL({in_array}, 2)
     print
         {out_array}
 
@@ -816,17 +785,12 @@ jBC subroutine:
 
 Script:
 
-    move
-        {lrefs}
-        subr tafcj_subr_locref ACCOUNT
-        {fld1}
-        func EXTRACT({lrefs}, 1, 1)
-        {fld2}
-        func EXTRACT({lrefs}, 2, 1)
-        {fld3}
-        func EXTRACT({lrefs}, 3, 1)
-        {qty}
-        func DCOUNT({lrefs}, {FM})
+    let
+        {lrefs} = subr tafcj_subr_locref ACCOUNT
+        {fld1} = func EXTRACT({lrefs}, 1, 1)
+        {fld2} = func EXTRACT({lrefs}, 2, 1)
+        {fld3} = func EXTRACT({lrefs}, 3, 1)
+        {qty} = func DCOUNT({lrefs}, {FM})
 
     print
         {fld1}
@@ -845,11 +809,9 @@ Script:
     read
         F.SPF
         SYSTEM
-    move
-        {t24rel}
-        field CURRENT.RELEASE
-        {old_or_new}
-        if {t24rel} eq R24 then New else Old
+    let
+        {t24rel} = field CURRENT.RELEASE
+        {old_or_new} = if {t24rel} eq R24 then New else Old
     print
         {old_or_new}
 
@@ -859,9 +821,8 @@ Script:
 
 "Pipe" (|) can be used to proceed several steps with the variable. Examples:
 
-    move
-        {var}
-        const 5 | func SPACE(@1) | func SQUOTE(@2)
+    let
+        {var} = const 5 | func SPACE(@1) | func SQUOTE(@2)
     print
         {var}
     # output: '     '
@@ -869,11 +830,9 @@ Script:
     read
         F.SPF
         SYSTEM
-    move
-        {t24rel}
-        field CURRENT.RELEASE
-        {old_or_new}
-        const New | const Old | if {t24rel} eq R24 then @1 else @2
+    let
+        {t24rel} = field CURRENT.RELEASE
+        {old_or_new} = const New | const Old | if {t24rel} eq R24 then @1 else @2
     print
         {old_or_new}
 
@@ -887,15 +846,13 @@ Script test.tcj:
     exec
         DOS /c C:\temenos\TAFJ\bin\trun.bat tafcj - -s:\temenos\T24\bnk\UD\test2.tcj -var:{folder}:ETC.BP
         0{FM}0
-    move
-        {out1}
-        const {EXECSCREEN}
+    let
+        {out1} = const {EXECSCREEN}
     exec
         DOS /c C:\temenos\TAFJ\bin\trun.bat tafcj - -s:\temenos\T24\bnk\UD\test2.tcj
         0{FM}0
-    move
-        {out2}
-        const {EXECSCREEN}
+    let
+        {out2} = const {EXECSCREEN}
     print
         1 ========>
         {out1}
@@ -935,9 +892,8 @@ Output:
 
 Execute OFS message.
 
-    move
-        {abbr_id}
-        const TEST.FTNAU
+    let
+        {abbr_id} = const TEST.FTNAU
     runofs
         ABBREVIATION,/I/PROCESS//0,{USERNAME}/{PASSWORD},{abbr_id},ORIGINAL.TEXT::=FUNDS.TRANSFER? E
     info
@@ -962,17 +918,15 @@ The user has to decide what to do with "0" in {OFSCOMMIT}. There are cases when 
 
 #### sleep
 
-    move
-        {tdate}
-        func TIMEDATE()
+    let
+        {tdate} = func TIMEDATE()
     info
         {tdate}
         Going to sleep 5 seconds
     sleep
         5
-    move
-        {tdate}
-        func TIMEDATE()
+    let
+        {tdate} = func TIMEDATE()
     info
         {tdate}
 
@@ -999,14 +953,12 @@ Output information to a text file.
         2
         TAFJAY.OUT
         tcjtest-2.txt
-    move
-        {tdate_ini}
-        func TIMEDATE()
+    let
+        {tdate_ini} = func TIMEDATE()
     sleep
         5
-    move
-        {tdate}
-        func TIMEDATE()
+    let
+        {tdate} = func TIMEDATE()
     out
         1
         1>>>{tdate_ini}
@@ -1021,16 +973,14 @@ Invoke PRECISION statement.
 
     precision
         13
-    move
-        {rezt}
-        func DIVS(1, 3)
+    let
+        {rezt} = func DIVS(1, 3)
     print
         {rezt}
     precision
         3
-    move
-        {rezt}
-        func DIVS(1, 3)
+    let
+        {rezt} = func DIVS(1, 3)
     print
         {rezt}
 
@@ -1048,9 +998,8 @@ Change a current COMPANY. Necessary if a commit will be used. If not, data can b
     read
         FAU1.INDUSTRY
         123
-    move
-        {descr}
-        field DESCRIPTION | const @1!
+    let
+        {descr} = field DESCRIPTION | const @1!
     update
         DESCRIPTION::={descr}
     commit
@@ -1145,7 +1094,7 @@ Return codes supported by the interpreter:
 
 - 0  success
 - 1  unknown error
-- 2  Subroutine does not exist (in move ... subr)
+- 2  Subroutine does not exist (in let ... subr)
 - 3  Error opening OFS.SOURCE
 - 4  OFS.SOURCE @ID not found
 - 5  non-TELNET OFS.SOURCE
@@ -1186,7 +1135,7 @@ Return codes supported by the interpreter:
 - 40 OFS.SOURCE is mandatory for this operation
 - 41 SELECT error
 - 42 SELECT list does not exist
-- 43 Command "move": keyword is not supported
+- 43 Command "let": keyword is not supported
 - 44 No "read" command was executed yet
 - 45 One or both parentheses missing in function definition
 - 46 Only one set of parentheses allowed function definition
@@ -1225,7 +1174,7 @@ Return codes supported by the interpreter:
 - {ID.COMPANY} - ID.COMPANY from I_COMMON
 - {LCCY} - LCCY from I_COMMON
 - {LF} - line feed (ASCII 10)
-- {LPARENTH} - left parentheses (to use in move ... func if it's in parameters)
+- {LPARENTH} - left parentheses (to use in let ... func if it's in parameters)
 - {LREF} - dyn. array with local field names of table (populated by "read" command)
 - {NEWRECORD} - 1 if a record obtained in "read" command is a new one; 0 for existing record
 - {NUMSEL} - number of records in the list after "getlist" command
@@ -1233,8 +1182,9 @@ Return codes supported by the interpreter:
 - {OFSOUTPUT} - outgoing OFS message
 - {PASSWORD} - user password
 - {PIPE} - "pipe" character (ASCII 124, also known as "vertical bar")
-- {RECORD} - record read by "read" command (initial record; not one after amendments)
-- {RPARENTH} - right parentheses (to use in move ... func if it's in parameters)
+- {RECORD} - record read by "read" command into record buffer (initial record; not one after amendments)
+- {RECORDCURR} - record in record buffer after amendments
+- {RPARENTH} - right parentheses (to use in let ... func if it's in parameters)
 - {SM} - subvalue mark (ASCII 252)
 - {SPACE} - space (ASCII 32)
 - {TAB} - Tab (ASCII 9)
