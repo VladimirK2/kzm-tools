@@ -210,9 +210,8 @@ ProcRec:
                 CHANGE CHAR(i_ch) TO '{CHAR_' : i_ch : '}' IN the_rec_out
 
                 FIND i_ch IN ext_chars SETTING dummy ELSE
-                    the_output_HDR<-1> = 'move'
-                    the_output_HDR<-1> = '    {CHAR_' : i_ch : '}'
-                    the_output_HDR<-1> = '    func CHAR(' : i_ch : ')'
+                    the_output_HDR<-1> = 'let'
+                    the_output_HDR<-1> = '    {CHAR_' : i_ch : '} = func CHAR(' : i_ch : ')'
                     ext_chars<-1> = i_ch
                 END
             END
@@ -297,9 +296,8 @@ ProcRec:
                     CHANGE CHAR(i_ch) TO '{CHAR_' : i_ch : '}' IN fld_cont
 
                     FIND i_ch IN ext_chars SETTING dummy ELSE
-                        the_output_HDR<-1> = 'move'
-                        the_output_HDR<-1> = '    {CHAR_' : i_ch : '}'
-                        the_output_HDR<-1> = '    func CHAR(' : i_ch : ')'
+                        the_output_HDR<-1> = 'let'
+                        the_output_HDR<-1> = '    {CHAR_' : i_ch : '} = func CHAR(' : i_ch : ')'
                         ext_chars<-1> = i_ch
                     END
                 END
