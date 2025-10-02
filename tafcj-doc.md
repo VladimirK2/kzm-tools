@@ -1159,6 +1159,8 @@ Return codes supported by the interpreter:
 - 64 IF: THEN missing
 - 65 IF: ELSE missing
 - 66 Variable name should be surrounded by non-alpha/digit symbols, e.g. {} or //
+- 67 "=" is mandatory for "let" command
+- 68 No keyword found in "let" command
 
 ## stdvars
 
