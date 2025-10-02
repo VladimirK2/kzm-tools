@@ -8,7 +8,7 @@ PROGRAM tafcj
     $INSERT I_F.OFS.SOURCE
     $INSERT I_F.OFS.REQUEST.DETAIL
 
-    CRT 'tafcj script interpreter 1.4.0'
+    CRT 'tafcj script interpreter 1.4.2'
 
     GOSUB initvars
     GOSUB parseparams
@@ -1118,6 +1118,12 @@ xeclet:
             END
         END
 
+        IF INDEX(SCRIPT_line, '=', 1) EQ 0 THEN
+            ERROR_message = '"=" is mandatory for "let" command'
+            EXIT_code = 67
+            GOSUB doexit
+        END
+
         VARR_name = TRIM( FIELD(SCRIPT_line, '=', 1 ), ' ', 'B')
         eval_list = TRIM( FIELD(SCRIPT_line, '=', 2, 999999 ), ' ', 'B')
 
@@ -1126,6 +1132,13 @@ xeclet:
 
         DIM eval_data(eval_qty)
         MAT eval_data = ''
+        skip_cmd = @FALSE
+
+        IF eval_qty EQ 0 THEN
+            ERROR_message = 'No keyword found in "let" command'
+            EXIT_code = 68
+            GOSUB doexit
+        END
 
         FOR i_eval = 1 TO eval_qty
             eval_cmd = TRIM(eval_list<i_eval>, ' ', 'B')
@@ -1149,8 +1162,6 @@ xeclet:
                 GOSUB yreplacevarrs
                 eval_body = to_be_replaced
             END
-
-            skip_cmd = @FALSE
 
             IF CMD_line EQ 'default' THEN   ;* don't do it if it's already assigned
                 FIND VARR_name IN VARR_name_list SETTING posn ELSE posn = 0
