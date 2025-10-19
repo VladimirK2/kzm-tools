@@ -2,6 +2,7 @@
 
 ## List.tcj
 tRun.bat tafcj - -s:tcjscripts\list.tcj
+
 (User will be asked for table and record)
 
 tRun.bat tafcj - -s:tcjscripts\list.tcj -var:{tabl}:f.spf -var:{recid}:system
