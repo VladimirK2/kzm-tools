@@ -1,0 +1,179 @@
+#   -var:{tabl}:f.spf -var:{recid}:system
+#   -var:{tabl}:fbnk.customer~his -var:{recid}:100100;1
+
+default
+    {tabl} = const
+    {recid} = const
+let
+    {01} = func EQ({tabl}, {BLANK})
+
+jump
+    :inptabl{01}
+
+:inptabl1
+print
+    Table :
+let
+    {tabl} = func INPUT() | func UPCASE(@1)
+
+:inptabl0
+
+let
+    {01} = func EQ({recid}, {BLANK})
+jump
+    :inprec{01}
+
+:inprec1
+print
+    Record :
+let
+    {recid} = func INPUT() | func UPCASE(@1)
+
+:inprec0
+
+let
+    {trail}  =  func FIELD({tabl}, ~, 2) | func UPCASE(@1)
+    {tabl}=func UPCASE({tabl}) | func FIELD(@1, ~, 1)
+    {appl} = func FIELD({tabl}, ., 2, 999)
+    {onezero} = func EQ({trail}, {BLANK})
+jump
+    :notrail{onezero}
+:notrail0
+let
+    {trail} = const ${trail}
+
+:notrail1
+
+read
+    {tabl}{trail}
+    {recid}
+jump
+    :norec{NEWRECORD}
+
+:norec0
+jump
+    :cont
+:norec1
+let
+    {recid} = func UPCASE({recid})
+read
+    {tabl}{trail}
+    {recid}
+jump
+    :noUPrec{NEWRECORD}
+:noUPrec0
+
+:cont
+let
+    {header} = const ## [{tabl}{trail}>{recid}]
+print
+    {header}
+let
+    {cntr} = const 0
+    {fullrec} = const {RECORD}
+    {fieldcount} = func DCOUNT({fullrec}, {FM})
+    {fulldict} = const {DICT}
+
+:strt
+let
+    {cntr} = func ADDS({cntr}, 1)
+    {onezero} = func LE({cntr}, {fieldcount})
+
+jump
+    :proc{onezero}
+:proc1
+let
+    {fmtcntr} =     func FMT({cntr}, 3R)
+    {data} =        func EXTRACT({fullrec}, {cntr})
+    {dict} =        func EXTRACT({fulldict}, {cntr})
+    {zerononzero} = func INDEX({data}, {VM}, 1)
+    {vm_there} =    func GE({zerononzero}, 1)
+# PGM.FILE: TYPE|K.TYPE
+    {dictout} =     func CHANGE({dict}, {VM}, {PIPE})
+    {dict} =        func EXTRACT({dict}, 1, 1)
+    {islocref} =    func EQ({dict}, LOCAL.REF)
+jump
+    :vm{vm_there}
+
+:vm1
+let
+    {vm_count} = func DCOUNT({data}, {VM})
+    {old_data} = const {data}
+    {data} = const
+    {cntr_vm} = const 0
+:vm_strt
+let
+    {cntr_vm} = func ADDS({cntr_vm}, 1)
+    {onezero} = func LE({cntr_vm}, {vm_count})
+jump
+    :vmproc{onezero}
+:vmproc1
+let
+    {value} = func EXTRACT({old_data}, 1, {cntr_vm})
+    {lennum} = func LEN({cntr_vm})
+jump
+    :lr{islocref}
+:lr0
+let
+    {diff} = func ADDS(36, -{lennum})
+    {value} = func FMT({value}, {diff}R)
+    {data} = const {data}{LF}[{fmtcntr}.{cntr_vm}] {value}
+jump
+    :vm_strt
+:lr1
+let
+    {lrefname} = func EXTRACT({LREF}, {cntr_vm})
+    {lenn} = func LEN({lrefname})
+    {diff} = func ADDS(36, -{lenn}) | func ADDS(@1, -{lennum})
+    {add_sp} = func SPACE({diff})
+    {data} = const {data}{LF}[{fmtcntr}.{cntr_vm} {lrefname}{add_sp}] {value}
+jump
+    :vm_strt
+
+:vmproc0
+:vm0
+let
+    {data} = func CONVERT({FM}{VM}{SM}, ^]\, {data}) | func TRIM(@1, {TM}, A)
+
+jump
+    :lrsingle{islocref}
+:lrsingle1
+let
+    {lrefname} = func EXTRACT({LREF}, 1)
+jump
+    :notonlylr{vm_there}
+:notonlylr0
+let
+    {dictout} = func FMT({dictout}{PIPE}{lrefname}, 35L)
+jump
+    :lrsingleEnd
+:notonlylr1
+let
+    {dictout} = func FMT({dictout}, 35L)
+jump
+    :lrsingleEnd
+:lrsingle0
+let
+    {dictout} = func FMT({dictout}, 35L)
+
+:lrsingleEnd
+
+let
+    {line} = const ({fmtcntr}) [{dictout}] {data}
+print
+    {line}
+jump
+    :strt
+
+:proc0
+:idempty1
+
+jump
+    :fini
+
+:noUPrec1
+error
+    Record not found
+exit
+    100
+:fini
