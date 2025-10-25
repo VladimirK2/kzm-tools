@@ -6,18 +6,20 @@ Scripts that can be used to select tables, list records etc. Can fully replace D
 
 Under TAFC - create a folder tcjscripts (as in examples; name can be any) in bnk.run.
 
-Under TAFJ - create that folder in T24\UD.
+Under TAFJ - create that folder in T24\bnk\UD.
 
 ## How to run standard scripts
 
 ### List.tcj
-tRun.bat tafcj - -s:tcjscripts\list.tcj
+List a record.
 
-(User will be asked for table and record)
+    tRun.bat tafcj - -s:tcjscripts\list.tcj
 
-tRun.bat tafcj - -s:tcjscripts\list.tcj -var:{tabl}:f.spf -var:{recid}:system
+(User will be asked to input required table and record.)
 
-tRun.bat tafcj - -s:tcjscripts\list.tcj -var:{tabl}:fbnk.customer~his -var:{recid}:100100;1
+    tRun.bat tafcj - -s:tcjscripts\list.tcj -var:{tabl}:f.spf -var:{recid}:system
+
+    tRun.bat tafcj - -s:tcjscripts\list.tcj -var:{tabl}:fbnk.customer~his -var:{recid}:100100;1
 
 Output for the last example:
 
@@ -233,8 +235,80 @@ Output for the last example:
     (185) [AUTHORISER                         ] 50576_OFFICER_OFS_SEAT
     (186) [CO.CODE                            ] GB0010001
     (187) [DEPT.CODE                          ] 1
-    [INFO] \\tsclient\home\Desktop\T24script\git\client\tcjscripts\list.tcj finished successfully
+    [INFO] tcjscripts\list.tcj finished successfully
     Elapsed time: 9.67 s.
-    
 
-    
+*Note: table and record IDs are converted to upper case in the script but it's very easy to suppress it if necessary - e.g. for mixed case IDs.*
+
+*Note 2: to get record contents into a file (without runtime information) use -a or -A parameter.*
+
+*Note 3: Examples are run on quite a weak PC, not a server - so elapsed times here and below are hopefully not what you're going to get.*
+
+### List.tcj
+Display the latest changes in a record.
+
+    tRun.bat tafcj - -s:tcjscripts\hist.tcj -var:{tabl}:fbnk.customer -var:{recid}:100100
+
+Again, if variables *tabl* and/or *recid* are not specified - user will be asked to input them.
+
+By default output is quite wide; to limit the output width it's possible to use additional optional variables *datawidth* and *dictwidth*:
+
+    tRun.bat tafcj - -s:tcjscripts\hist.tcj -var:{tabl}:fbnk.customer -var:{recid}:100100 -var:{datawidth}:25 -var:{dictwidth}:30
+
+Output:
+
+    tafcj script interpreter 1.4.2
+    Script to run: tcjscripts\hist.tcj
+    Variable(s) passed to script:
+    {tabl} = "fbnk.customer"
+    {recid} = "100100"
+    {datawidth} = "32"
+    {dictwidth} = "30"
+    Reading script...
+    Parsing script...
+    Proceeding ...
+    [FBNK.CUSTOMER>100100]
+    ( 78) [CUSTOMER.CURRENCY             ]                                  | USD 
+    ( 79) [SALARY                        ]                                  | 500000.00 
+    ( 80) [ANNUAL.BONUS                  ]                                  | 1000000.00 
+    ( 81) [SALARY.DATE.FREQ              ]                                  | 20240601M0101 
+    (182) [  CURR.NO                     ] 1                                | 2 
+    (183) [  INPUTTER                    ] 50576_OFFICER__OFS_SEAT          | 13156_OFFICER__OFS_SEAT 
+    (184) [  DATE.TIME                   ] 2406020106                       | 2406020947 
+    (185) [  AUTHORISER                  ] 50576_OFFICER_OFS_SEAT           | 13156_OFFICER_OFS_SEAT 
+    [INFO] tcjscripts\hist.tcj finished successfully
+    Elapsed time: 12.44 s.
+
+Optional variable *all* can be used to display all fields - not only changed ones; "equal" signs indicate fields that didn't change:
+
+    tRun.bat tafcj - -s:tcjscripts\hist.tcj -var:{tabl}:f.de.form.type -var:{recid}:system -var:{all}:y -var:{datawidth}:32 -var:{dictwidth}:30
+
+Output:
+
+    tafcj script interpreter 1.4.2
+    Script to run: tcjscripts\hist.tcj
+    Variable(s) passed to script:
+    {tabl} = "f.de.form.type"
+    {recid} = "system"
+    {all} = "y"
+    {datawidth} = "32"
+    {dictwidth} = "30"
+    Reading script...
+    Parsing script...
+    Proceeding ...
+    [F.DE.FORM.TYPE>system]
+    (  1) [DESCRIPTION                   ] Standard landscape form          = Standard landscape form 
+    (  3) [FORM.WIDTH                    ] 132                              | 162 
+    (  4) [FORM.DEPTH                    ] 66                               = 66 
+    (  7) [RPT.ATTRIBUTES                ] LANDCOMP                         = LANDCOMP 
+    (  8) [OPTIONS                       ] NHEAD                            = NHEAD 
+    ( 10) [  CURR.NO                     ] 6                                | 7 
+    ( 11) [  INPUTTER                    ] 3_AUTHORISER___OFS_MB.OFS.AUTH   | 1_202102 
+    ( 12) [  DATE.TIME                   ] 0804151341                       | 2406010641 
+    ( 13) [  AUTHORISER                  ] 3_AUTHORISER_OFS_MB.OFS.AUTH     | 97500_TRAIN511_OFS_MB.OFS 
+    ( 14) [  CO.CODE                     ] GB0010001                        = GB0010001 
+    ( 15) [  DEPT.CODE                   ] 1                                = 1 
+    [INFO] tcjscripts\hist.tcj finished successfully
+    Elapsed time: 13.97 s.
+
+**TO BE CONTINUED**

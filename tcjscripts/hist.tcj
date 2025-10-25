@@ -1,0 +1,246 @@
+# -var:{tabl}:fbnk.customer -var:{recid}:100100 -var:{all}:y -var:{datawidth}:35 -var:{dictwidth}:25
+default
+    {tabl} = const
+    {recid} = const
+let
+    {01} = func EQ({tabl}, {BLANK})
+jump
+    :inptabl{01}
+
+:inptabl1
+print
+    Table :
+let
+    {tabl} = func INPUT() | func UPCASE(@1)
+
+:inptabl0
+
+let
+    {01} = func EQ({recid}, {BLANK})
+jump
+    :inprec{01}
+
+:inprec1
+print
+    Record :
+let
+    {recid} = func INPUT() | func UPCASE(@1)
+
+:inprec0
+
+default
+    {datawidth} = const 75
+    {dictwidth} = const 45
+    {all} = const 0
+    {recid} = const
+
+let
+    {all} = func NE( {all}, 0 )
+    {tabl} = func UPCASE({tabl})
+    {cntr} = const 0
+
+print
+    [{tabl}>{recid}]
+let
+    {appl} = func FIELD({tabl}, ., 2, 999)
+
+read
+    {tabl}
+    {recid}
+jump
+    :norec{NEWRECORD}
+
+:norec1
+let
+    {recid} = func UPCASE({recid})
+read
+    {tabl}
+    {recid}
+jump
+    :norec2{NEWRECORD}
+
+:norec21
+error
+    LIVE record not found
+exit
+    100
+
+:norec0
+:norec20
+let
+    {fullrec} = const {RECORD}
+    {fulldict} = const {DICT}
+    {fieldcount} = func DCOUNT({fullrec}, {FM})
+    {currno} = field CURR.NO
+    {histno} = func ADDS({currno}, -1)
+    {fullrec_left} = func SPACE({fieldcount})
+
+read
+    {tabl}$NAU
+    {recid}
+jump
+    :norec3{NEWRECORD}
+
+:norec30
+let
+    {fullrec_left} = const {RECORD}
+jump
+    :strt
+:norec31
+
+read
+    F.PGM.FILE
+    {appl}
+jump
+    :norec4{NEWRECORD}
+
+:norec40
+let
+    {type} = field TYPE
+    {ishist} = func EQ({type}, H)
+jump
+    :hist{ishist}
+:hist1
+read
+    {tabl}$HIS
+    {recid};{histno}
+jump
+    :norec5{NEWRECORD}
+
+:norec50
+let
+    {fullrec_left} = const {RECORD}
+
+:hist0
+:norec41
+:norec51
+#------------------------
+:strt
+let
+    {cntr} = func ADDS({cntr}, 1)
+    {onezero} = func LE({cntr}, {fieldcount})
+jump
+    :proc{onezero}
+:proc1
+let
+    {fmtcntr} = func FMT({cntr}, 3R)
+    {data} = func FIELD({fullrec}, {FM}, {cntr})
+    {dict} = func EXTRACT({fulldict}, {cntr})
+    {islocref} = func EQ({dict}, LOCAL.REF)
+    {vm_qty} = func DCOUNT({data}, {VM})
+    {data_left} = func FIELD({fullrec_left}, {FM}, {cntr})
+    {vm_qty_left} = func DCOUNT({data_left}, {VM})
+    {arr_qty} = const {vm_qty_left}{FM}{vm_qty}
+    {vm_max_qty} = func MAXIMUM({arr_qty})
+    {vm_cntr} = const 0
+
+:vm_strt
+let
+    {vm_cntr} = func ADDS({vm_cntr}, 1)
+    {onezero} = func LE({vm_cntr}, {vm_max_qty})
+jump
+    :vm_proc{onezero}
+:vm_proc1
+
+let
+    {vm_data} = func EXTRACT({data}, 1, {vm_cntr}) | func OCONV(@1, MCP)
+    {vm_data_left} = func EXTRACT({data_left}, 1, {vm_cntr}) | func OCONV(@1, MCP)
+    {iseq} = func EQ({vm_data_left}, {vm_data})
+jump
+    :eqdef{all}
+:eqdef1
+let
+    {iseqdef} = func IFS( {iseq}, {LPARENTH}SAME{RPARENTH}, {LPARENTH}DIFFERENT{RPARENTH} )
+jump
+    :eqdeffini
+:eqdef0
+let
+    {iseqdef} = const
+
+:eqdeffini
+jump
+    :same{iseq}_{all}
+:same0_0
+:same0_1
+:same1_1
+
+jump
+    :LR{islocref}
+:LR0
+let
+    {onezero} = func GE({vm_cntr}, 2)
+jump
+    :add{onezero}
+:add0
+let
+    {outdict} = const {dict}
+jump
+    :fmtdict
+:add1
+let
+    {outdict} = const {dict}-{vm_cntr}
+:fmtdict
+let
+    {01} = func INDEX(/RECORD.STATUS/CURR.NO/INPUTTER/DATE.TIME/AUTHORISER/CO.CODE/DEPT.CODE/AUDITOR.CODE/AUDIT.DATE.TIME/, /{dict}/, 1) | func GT(@1, 0)
+jump
+    :indent{01}
+:indent1
+let
+    {outdict} = const {SPACE}{SPACE}{outdict}
+:indent0
+let
+    {outdict} = func FMT({outdict}, {dictwidth}L)
+jump
+    :displ
+:LR1
+let
+    {lrefname} = func EXTRACT({LREF}, {vm_cntr}) | func CHANGE(@1, {VM}, /)
+    {outdict} = const {dict}-{vm_cntr}{PIPE}{PIPE}{lrefname} | func FMT(@1, {dictwidth}L)
+
+:displ
+let
+    {vm_data_len} = func LEN({vm_data_left})
+    {01} = func GT( {vm_data_len}, {datawidth} )
+jump
+    :long{01}
+:long1
+let
+    {line1} = const ({fmtcntr}) [{outdict}] {vm_data_left}
+    {line2} = const ({fmtcntr}) [{outdict}] {vm_data}
+
+print
+    ---
+    {line1}{SPACE}
+    --- {iseqdef}
+    {line2}{SPACE}
+    ---
+### {SPACE} - because there could be ":" at EOL; thus next print would be on the same line
+jump
+    :same1_0
+:long0
+let
+    {vm_data_left} = func FMT({vm_data_left}, {datawidth}L)
+jump
+    :eq{iseq}
+:eq0
+let
+    {line} = const ({fmtcntr}) [{outdict}] {vm_data_left} {PIPE} {vm_data}
+jump
+    :outp
+:eq1
+let
+    {line} = const ({fmtcntr}) [{outdict}] {vm_data_left} = {vm_data}
+:outp
+print
+    {line}{SPACE}
+
+:same1_0
+jump
+    :vm_strt
+
+:vm_proc0
+jump
+    :strt
+
+:proc0
+:fini
