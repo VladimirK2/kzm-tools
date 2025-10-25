@@ -22,7 +22,7 @@ tRun.bat tafcj - -s:tcjscripts\list.tcj -var:{tabl}:fbnk.customer~his -var:{reci
 Output for the last example:
 
     tafcj script interpreter 1.4.2
-    Script to run: \\tsclient\home\Desktop\T24script\git\client\tcjscripts\list.tcj
+    Script to run: tcjscripts\list.tcj
     Variable(s) passed to script:
     {tabl} = "fbnk.customer~his"
     {recid} = "100100;1"
@@ -236,4 +236,5 @@ Output for the last example:
     [INFO] \\tsclient\home\Desktop\T24script\git\client\tcjscripts\list.tcj finished successfully
     Elapsed time: 9.67 s.
     
+
     
