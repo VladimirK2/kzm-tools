@@ -238,7 +238,7 @@ Output for the last example:
     [INFO] tcjscripts\list.tcj finished successfully
     Elapsed time: 9.67 s.
 
-*Note: table and record IDs are converted to upper case in the script but it's very easy to suppress it if necessary - e.g. for mixed case IDs.*
+*Note: table and record IDs are converted to upper case in the script but it's very easy to suppress if necessary - e.g. for mixed case IDs.*
 
 *Note 2: to get record contents into a file (without runtime information) use -a or -A parameter.*
 
@@ -312,3 +312,4 @@ Output:
     Elapsed time: 13.97 s.
 
 **TO BE CONTINUED**
+
