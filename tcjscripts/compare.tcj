@@ -1,0 +1,201 @@
+#  -var:{tabl}:f.abbreviation -var:{rec1}:FT -var:{rec2}:ab [-var:{width}:132]
+default
+    {width} = const 200
+    {tabl} = const {BLANK}
+    {rec1} = const {BLANK}
+    {rec2} = const {BLANK}
+
+let
+    {01} = func EQ({tabl}, {BLANK})
+jump
+    :inptabl{01}
+
+:inptabl1
+print
+    Table :
+let
+    {tabl} = func INPUT() | func UPCASE(@1)
+
+:inptabl0
+
+let
+    {01} = func EQ({rec1}, {BLANK})
+jump
+    :inprec{01}
+
+:inprec1
+print
+    Record 1 :
+let
+    {rec1} = func INPUT() | func UPCASE(@1)
+
+:inprec0
+
+let
+    {01} = func EQ({rec2}, {BLANK})
+jump
+    :inprectwo{01}
+
+:inprectwo1
+print
+    Record 2 :
+let
+    {rec2} = func INPUT() | func UPCASE(@1)
+
+:inprectwo0
+
+#==================
+let
+    {cntr} = const 0
+    {col1} = func DIV({width}, 4) | func INT(@1)
+    {col2} = func DIV({width}, 3) | func INT(@1)
+    {lead_sp} = func  ADDS({col1}, 6) | func SPACE(@1)
+    {tabl} = func UPCASE({tabl})
+    {trail} = func FIELD({tabl}, ~, 2)
+    {tabl} = func FIELD({tabl}, ~, 1)
+    {onezero} = func EQ({trail}, {BLANK})
+
+jump
+    :notrail{onezero}
+:notrail0
+let
+    {trail} = const ${trail}
+jump
+    :aftertrail
+:notrail1
+let
+    {trail} = const
+:aftertrail
+
+read
+    {tabl}{trail}
+    {rec1}
+jump
+    :noexactrecone{NEWRECORD}
+
+:noexactrecone1
+let
+    {rec1} = func UPCASE({rec1})
+read
+    {tabl}{trail}
+    {rec1}
+jump
+    :noupperrecone{NEWRECORD}
+:noexactrecone0
+:noupperrecone0
+
+let
+    {fullrec} = const {RECORD}
+    {fieldcount} = func DCOUNT({fullrec}, {FM})
+    {fulldict} = const {DICT}
+
+read
+    {tabl}{trail}
+    {rec2}
+jump
+    :noexactrectwo{NEWRECORD}
+:noexactrectwo1
+
+let
+    {rec2} = func UPCASE({rec2})
+read
+    {tabl}{trail}
+    {rec2}
+jump
+    :noupperrectwo{NEWRECORD}
+
+:noupperrectwo1
+error
+    Record #2 not found ({tabl}{trail}>{rec2})
+exit
+    100
+
+:noexactrectwo0
+:noupperrectwo0
+
+let
+    {fullrec_right} = const {RECORD}
+jump
+    :strt0
+
+:strt0
+let
+    {rs1len} = func LEN({tabl}>{rec1})
+    {loffsetlen} = func ADDS({col1}, 7)
+    {loffsetlen} = func ADDS({loffsetlen}, -3)
+    {loffset} = func SPACE({loffsetlen})
+    {rspec1} = func FMT({tabl}{trail}>{rec1}, {col2}L)
+    {rspec2} = const {tabl}{trail}>{rec2}
+print
+    ## {loffset}|{rspec1}  |{rspec2}
+:strt
+
+let
+    {cntr} = func ADDS({cntr}, 1)
+    {onezero} = func LE({cntr}, {fieldcount})
+jump
+    :proc{onezero}
+:proc1
+let
+    {fmtcntr} = func FMT({cntr}, 3R)
+    {data} = func FIELD({fullrec}, {FM}, {cntr}) | func OCONV(@1, MCP) | func FMT(@2, {col2}L)
+    {data_right} = func FIELD({fullrec_right}, {FM}, {cntr}) | func OCONV(@1, MCP) | func FMT(@2, {col2}L)
+    {dict} = func EXTRACT({fulldict}, {cntr}) | func FMT(@1, {col1}L)
+    {iseq} = func EQ({data}, {data_right})
+jump
+    :emp{iseq}
+
+:emp0
+jump
+    :show_it
+
+:emp1
+jump
+    :strt
+
+:show_it
+:pr1
+
+let
+    {data_l} = func CHANGE({data}, {TM}, {FM})
+    {data_r} = func CHANGE({data_right}, {TM}, {FM})
+    {cntr_l} = func DCOUNT({data_l}, {FM})
+    {cntr_r} = func DCOUNT({data_r}, {FM})
+    {cntr_max} = func MAXIMUM({cntr_l}{FM}{cntr_r})
+    {line_l} = func EXTRACT({data_l}, 1)
+    {line_r} = func EXTRACT({data_r}, 1)
+    {line_r_out} = func TRIM({line_r}, {SPACE}, T)
+
+print
+    ({fmtcntr}) |{dict}| {line_l} | {line_r_out}
+
+let
+    {cntr_line} = const 1
+:line
+let
+    {cntr_line} = func ADDS({cntr_line}, 1)
+    {onezero_line} = func LE({cntr_line}, {cntr_max})
+jump
+    :proc_line{onezero_line}
+:proc_line0
+jump
+    :strt
+:proc_line1
+let
+    {line_l} = func EXTRACT({data_l}, {cntr_line})
+    {line_l} = func FMT({line_l}, {col2}L)
+    {line_r} = func EXTRACT({data_r}, {cntr_line})
+    {line_r_out} = func TRIM({line_r}, {SPACE}, T)
+
+print
+    {lead_sp} | {line_l} | {line_r_out}
+jump
+    :line
+
+:noupperrecone1
+error
+    Record 1 not found ({tabl}{trail}>{rec1})
+exit
+    100
+:proc0
+:fini

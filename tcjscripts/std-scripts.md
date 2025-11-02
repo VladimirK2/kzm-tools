@@ -311,5 +311,32 @@ Output:
     [INFO] tcjscripts\hist.tcj finished successfully
     Elapsed time: 13.97 s.
 
-**TO BE CONTINUED**
 
+### compare.tcj
+Compare 2 records in a table
+
+    tRun.bat tafcj - -s:tcjscripts\compare.tcj -var:{tabl}:f.abbreviation -var:{rec1}:FT -var:{rec2}:ab -var:{width}:132
+
+Variable *width* (output width) is optional.
+
+Output:
+
+    tafcj script interpreter 1.4.2
+    Script to run: tcjscripts\compare.tcj
+    Variable(s) passed to script:
+    {tabl} = "f.abbreviation"
+    {rec1} = "FT"
+    {rec2} = "ab"
+    {width} = "132"
+    Reading script...
+    Parsing script...
+    Proceeding ...
+    ##                                      |F.ABBREVIATION>FT                             |F.ABBREVIATION>AB
+    (  1) |ORIGINAL.TEXT                    | FUNDS.TRANSFER                               | ABBREVIATION
+    (  4) |INPUTTER                         | 1_R14m                                       | 12760_OFFICER__OFS_SEAT
+    (  5) |DATE.TIME                        | 2406010551                                   | 2406012212
+    (  6) |AUTHORISER                       | 36669_TRAIN511_OFS_MB.OFS                    | 12760_OFFICER_OFS_SEAT
+    [INFO] tcjscripts\compare.tcj finished successfully
+    Elapsed time: 9.80 s.
+
+**TO BE CONTINUED**
