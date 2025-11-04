@@ -10,7 +10,7 @@ Under TAFJ - create that folder in T24\bnk\UD.
 
 ## Alphabetical list
 
-[compare.tcj](#compare.tcj) | [hist.tcj](#hist.tcj) | [list.tcj](#list.tcj) | [updrec.tcj](#updrec.tcj)
+[compare.tcj](#compare.tcj) | [hist.tcj](#hist.tcj) | [list.tcj](#list.tcj) | [updrec](#updrec)
 
 ## How to run standard scripts
 
@@ -437,3 +437,4 @@ Output:
     Elapsed time: 12.22 s.
 
 **TO BE CONTINUED**
+
