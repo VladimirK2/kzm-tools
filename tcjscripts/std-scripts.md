@@ -346,7 +346,7 @@ Output:
     [INFO] tcjscripts\compare.tcj finished successfully
     Elapsed time: 9.80 s.
 
-### updrec.tcj
+### updrec
 
 Update a record.
 
@@ -437,4 +437,5 @@ Output:
     Elapsed time: 12.22 s.
 
 **TO BE CONTINUED**
+
 
