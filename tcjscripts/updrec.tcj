@@ -1,0 +1,10 @@
+# -var:{tabl}:F.TSA.SERVICE -var:{recid}:COB -var:{field}:SERVICE.CONTROL -var:{cont}:START
+default
+    {value} = const {BLANK}
+    {subvalue} = const {BLANK}
+read
+    {tabl}
+    {recid}
+update
+    {field}:{value}:{subvalue}={cont}
+commit

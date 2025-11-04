@@ -8,9 +8,14 @@ Under TAFC - create a folder tcjscripts (as in examples; name can be any) in bnk
 
 Under TAFJ - create that folder in T24\bnk\UD.
 
+## Alphabetical list
+
+[compare.tcj](#compare.tcj) | [hist.tcj](#hist.tcj) | [list.tcj](#list.tcj) | [updrec.tcj](#updrec.tcj)
+
 ## How to run standard scripts
 
-### List.tcj
+### list.tcj
+
 List a record.
 
     tRun.bat tafcj - -s:tcjscripts\list.tcj
@@ -244,7 +249,8 @@ Output for the last example:
 
 *Note 3: Examples are run on quite a weak PC, not a server - so elapsed times here and below are hopefully not what you're going to get.*
 
-### List.tcj
+### hist.tcj
+
 Display the latest changes in a record.
 
     tRun.bat tafcj - -s:tcjscripts\hist.tcj -var:{tabl}:fbnk.customer -var:{recid}:100100
@@ -313,7 +319,8 @@ Output:
 
 
 ### compare.tcj
-Compare 2 records in a table
+
+Compare 2 records in a table.
 
     tRun.bat tafcj - -s:tcjscripts\compare.tcj -var:{tabl}:f.abbreviation -var:{rec1}:FT -var:{rec2}:ab -var:{width}:132
 
@@ -338,5 +345,95 @@ Output:
     (  6) |AUTHORISER                       | 36669_TRAIN511_OFS_MB.OFS                    | 12760_OFFICER_OFS_SEAT
     [INFO] tcjscripts\compare.tcj finished successfully
     Elapsed time: 9.80 s.
+
+### updrec.tcj
+
+Update a record.
+
+    tRun.bat tafcj PW.MODEL -l:AUTHOR -p:123456 -s:tcjscripts\updrec.tcj -var:{tabl}:F.TSA.SERVICE -var:{recid}:COB -var:{field}:SERVICE.CONTROL -var:{cont}:START
+
+Output:
+
+    tafcj script interpreter 1.4.2
+    (OFS.INITIALISE.SOURCE) : PW.MODEL
+    Script to run: tcjscripts\updrec.tcj
+    Variable(s) passed to script:
+    {tabl} = "F.TSA.SERVICE"
+    {recid} = "COB"
+    {field} = "SERVICE.CONTROL"
+    {cont} = "START"
+    Reading script...
+    Parsing script...
+    Proceeding ...
+    [INFO] F.TSA.SERVICE>COB committed
+    [INFO] tcjscripts\updrec.tcj finished successfully
+    Elapsed time: 10.83 s.
+
+
+See the result:
+
+    tRun.bat tafcj - -s:tcjscripts\hist.tcj -var:{tabl}:F.TSA.SERVICE -var:{recid}:COB -var:{datawidth}:30 -var:{dictwidth}:17
+
+Output:
+
+    tafcj script interpreter 1.4.2
+    Script to run: tcjscripts\hist.tcj
+    Variable(s) passed to script:
+    {tabl} = "F.TSA.SERVICE"
+    {recid} = "COB"
+    {datawidth} = "30"
+    {dictwidth} = "17"
+    Reading script...
+    Parsing script...
+    Proceeding ...
+    [F.TSA.SERVICE>COB]
+    (  6) [SERVICE.CONTROL  ] STOP                           | START 
+    ( 15) [DATE             ]                                | 20240516 
+    ( 16) [STARTED          ] 02/06/2024 09:27:15            | 04/11/2025 10:00:22 
+    ( 16) [STARTED-2        ] 02/06/2024 08:43:19            | 02/06/2024 09:27:15 
+    ( 16) [STARTED-3        ] 02/06/2024 08:05:42            | 02/06/2024 08:43:19 
+    ( 16) [STARTED-4        ] 02/06/2024 07:54:47            | 02/06/2024 08:05:42 
+    ( 16) [STARTED-5        ] 02/06/2024 07:32:39            | 02/06/2024 07:54:47 
+    ( 16) [STARTED-6        ] 02/06/2024 07:01:22            | 02/06/2024 07:32:39 
+    ( 16) [STARTED-7        ] 02/06/2024 05:59:17            | 02/06/2024 07:01:22 
+    ( 16) [STARTED-8        ] 02/06/2024 05:25:23            | 02/06/2024 05:59:17 
+    ( 16) [STARTED-9        ] 02/06/2024 05:13:49            | 02/06/2024 05:25:23 
+    ( 16) [STARTED-10       ] 02/06/2024 04:26:13            | 02/06/2024 05:13:49 
+    ( 17) [STOPPED          ] 02/06/2024 09:40:41            |  
+    ( 17) [STOPPED-2        ] 02/06/2024 08:54:15            | 02/06/2024 09:40:41 
+    ( 17) [STOPPED-3        ] 02/06/2024 08:16:50            | 02/06/2024 08:54:15 
+    ( 17) [STOPPED-4        ] 02/06/2024 08:05:19            | 02/06/2024 08:16:50 
+    ( 17) [STOPPED-5        ] 02/06/2024 07:41:43            | 02/06/2024 08:05:19 
+    ( 17) [STOPPED-6        ] 02/06/2024 07:14:16            | 02/06/2024 07:41:43 
+    ( 17) [STOPPED-7        ] 02/06/2024 06:12:47            | 02/06/2024 07:14:16 
+    ( 17) [STOPPED-8        ] 02/06/2024 05:36:57            | 02/06/2024 06:12:47 
+    ( 17) [STOPPED-9        ] 02/06/2024 05:24:38            | 02/06/2024 05:36:57 
+    ( 17) [STOPPED-10       ] 02/06/2024 04:35:02            | 02/06/2024 05:24:38 
+    ( 18) [ELAPSED          ] 00:13:26                       |  
+    ( 18) [ELAPSED-2        ] 00:10:56                       | 00:13:26 
+    ( 18) [ELAPSED-3        ] 00:11:08                       | 00:10:56 
+    ( 18) [ELAPSED-4        ] 00:10:32                       | 00:11:08 
+    ( 18) [ELAPSED-5        ] 00:09:04                       | 00:10:32 
+    ( 18) [ELAPSED-6        ] 00:12:54                       | 00:09:04 
+    ( 18) [ELAPSED-7        ] 00:13:30                       | 00:12:54 
+    ( 18) [ELAPSED-8        ] 00:11:34                       | 00:13:30 
+    ( 18) [ELAPSED-9        ] 00:10:49                       | 00:11:34 
+    ( 18) [ELAPSED-10       ] 00:08:49                       | 00:10:49 
+    ( 19) [TRANSACTIONS     ] 229436                         |  
+    ( 19) [TRANSACTIONS-2   ] 197696                         | 229436 
+    ( 19) [TRANSACTIONS-3   ] 189032                         | 197696 
+    ( 19) [TRANSACTIONS-4   ] 186001                         | 189032 
+    ( 19) [TRANSACTIONS-5   ] 179297                         | 186001 
+    ( 19) [TRANSACTIONS-6   ] 190953                         | 179297 
+    ( 19) [TRANSACTIONS-7   ] 176824                         | 190953 
+    ( 19) [TRANSACTIONS-8   ] 163554                         | 176824 
+    ( 19) [TRANSACTIONS-9   ] 170569                         | 163554 
+    ( 19) [TRANSACTIONS-10  ] 130895                         | 170569 
+    ( 27) [  CURR.NO        ] 6                              | 7 
+    ( 28) [  INPUTTER       ] 94502_OFFICER__OFS_SEAT        | 99471_AUTHORISER__OFS_PW.MODEL 
+    ( 29) [  DATE.TIME      ] 2406012212                     | 2511041000 
+    ( 30) [  AUTHORISER     ] 94502_OFFICER_OFS_SEAT         | 99471_AUTHORISER_OFS_PW.MODEL 
+    [INFO] tcjscripts\hist.tcj finished successfully
+    Elapsed time: 12.22 s.
 
 **TO BE CONTINUED**
