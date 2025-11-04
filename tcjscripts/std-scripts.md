@@ -10,11 +10,11 @@ Under TAFJ - create that folder in T24\bnk\UD.
 
 ## Alphabetical list
 
-[compare.tcj](#compare.tcj) | [hist.tcj](#hist.tcj) | [list.tcj](#list.tcj) | [updrec](#updrec)
+[compare](#compare) | [hist](#hist) | [list](#list) | [updrec](#updrec)
 
 ## How to run standard scripts
 
-### list.tcj
+### list
 
 List a record.
 
@@ -249,7 +249,7 @@ Output for the last example:
 
 *Note 3: Examples are run on quite a weak PC, not a server - so elapsed times here and below are hopefully not what you're going to get.*
 
-### hist.tcj
+### hist
 
 Display the latest changes in a record.
 
@@ -318,7 +318,7 @@ Output:
     Elapsed time: 13.97 s.
 
 
-### compare.tcj
+### compare
 
 Compare 2 records in a table.
 
@@ -437,5 +437,3 @@ Output:
     Elapsed time: 12.22 s.
 
 **TO BE CONTINUED**
-
-
