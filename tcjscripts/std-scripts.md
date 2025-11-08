@@ -251,6 +251,8 @@ Output for the last example:
 
 *Note 3: Examples are run on quite a weak PC, not a server - so elapsed times here and below are hopefully not what you're going to get.*
 
+[Top](#Top)
+
 ### hist
 
 Display the latest changes in a record.
@@ -319,6 +321,7 @@ Output:
     [INFO] tcjscripts\hist.tcj finished successfully
     Elapsed time: 13.97 s.
 
+[Top](#Top)
 
 ### compare
 
@@ -347,6 +350,8 @@ Output:
     (  6) |AUTHORISER                       | 36669_TRAIN511_OFS_MB.OFS                    | 12760_OFFICER_OFS_SEAT
     [INFO] tcjscripts\compare.tcj finished successfully
     Elapsed time: 9.80 s.
+
+[Top](#Top)
 
 ### updrec
 
@@ -438,6 +443,7 @@ Output:
     [INFO] tcjscripts\hist.tcj finished successfully
     Elapsed time: 12.22 s.
 
+[Top](#Top)
 
 ### tabl
 
