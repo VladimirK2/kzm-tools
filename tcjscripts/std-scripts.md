@@ -1,5 +1,7 @@
 #  Standard scripts
 
+## Top
+
 Scripts that can be used to select tables, list records etc. Can fully replace DBTools at some point.
 
 ## Where to put standard scripts
@@ -10,7 +12,7 @@ Under TAFJ - create that folder in T24\bnk\UD.
 
 ## Alphabetical list
 
-[compare](#compare) | [hist](#hist) | [list](#list) | [updrec](#updrec)
+[compare](#compare) | [hist](#hist) | [list](#list) | [tabl](#tabl) | [updrec](#updrec)
 
 ## How to run standard scripts
 
@@ -245,7 +247,7 @@ Output for the last example:
 
 *Note: table and record IDs are converted to upper case in the script but it's very easy to suppress if necessary - e.g. for mixed case IDs.*
 
-*Note 2: to get record contents into a file (without runtime information) use -a or -A parameter.*
+*Note 2: to get script output into a file (without runtime information) use -a or -A parameter.*
 
 *Note 3: Examples are run on quite a weak PC, not a server - so elapsed times here and below are hopefully not what you're going to get.*
 
@@ -435,5 +437,59 @@ Output:
     ( 30) [  AUTHORISER     ] 94502_OFFICER_OFS_SEAT         | 99471_AUTHORISER_OFS_PW.MODEL 
     [INFO] tcjscripts\hist.tcj finished successfully
     Elapsed time: 12.22 s.
+
+
+### tabl
+
+Select a table and show record descriptions (guessing most popular description field names; otherwise show field #1)
+
+    trun tafcj - -s:tcjscripts\tabl.tcj -var:{tabl}:f.printer.id
+
+Output:
+
+    tafcj script interpreter 1.4.2
+    Script to run: tabl.tcj
+    Variable(s) passed to script:
+    {tabl} = "f.printer.id"
+    Reading script...
+    Parsing script...
+    Proceeding ...
+    # Table name: [F.PRINTER.ID]
+    [B01CHQ1] HPLASER
+    [DMS] Copy report/delivery output to directory
+    [HOLD] Hold Output - Do Not Print
+    [HPLASER] HP Laser Printer
+    [LCPRINT] LC PRINT FORMAT
+    [STATEMENT] Hold Output - Do Not Print
+    [SYSTEM] SYSTEM LINE PRINTER
+    [TSHOLD] Network printer
+    [lnpt000] Network printer
+    # Records shown: 9
+    [INFO] Record &SAVEDLISTS&>SEL_LIST deleted
+    [INFO] tabl.tcj finished successfully
+    Elapsed time: 5.89 s.
+
+Use selection criteria:
+
+    trun tafcj - -s:tcjscripts\tabl.tcj -var:{tabl}:fau1.industry -var:{sel_crit}:WITH#20@ID#20EQ#209534
+
+Output:
+
+    tafcj script interpreter 1.4.2
+    Script to run: tcjscripts\tabl.tcj
+    Variable(s) passed to script:
+    {tabl} = "fau1.industry"
+    {sel_crit} = "WITH @ID EQ 9534"
+    Reading script...
+    Parsing script...
+    Proceeding ...
+    # Table name: [FAU1.INDUSTRY]
+    [9534] Brothel Keeping & Prostitution Svcs
+    # Records shown: 1
+    [INFO] Record &SAVEDLISTS&>SEL_LIST deleted
+    [INFO] tcjscripts\tabl.tcj finished successfully
+    Elapsed time: 5.89 s.
+
+[Top](#Top)
 
 **TO BE CONTINUED**

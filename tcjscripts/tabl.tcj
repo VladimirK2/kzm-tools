@@ -1,0 +1,135 @@
+# -var:{tabl}:fau1.industry -var:{sel_crit}:WITH#20@ID#20EQ#209534
+
+default
+    {tabl} = const {BLANK}
+
+let
+    {01} = func EQ({tabl}, {BLANK})
+jump
+    :inptabl{01}
+
+:inptabl1
+print
+    Table :
+
+:inptabl0
+
+default
+    {sel_crit} = const {BLANK}
+let
+    {tabl} = func UPCASE({tabl})
+    {trail} = func FIELD({tabl}, ~, 2)
+    {tabl} = func FIELD({tabl}, ~, 1)
+    {onezero} = func EQ({trail}, {BLANK})
+jump
+    :notrail{onezero}
+:notrail0
+let
+    {trail} = const ${trail}
+jump
+    :aftertrail
+:notrail1
+let
+    {trail} = const {BLANK}
+:aftertrail
+print
+    # Table name: [{tabl}{trail}]
+select
+    SEL_LIST
+    {tabl}{trail} {sel_crit}
+    BY @ID
+# ------
+read
+    {tabl}{trail}
+    DUMMY
+# ------
+let
+    {descr_found} = func FIND(DESCRIPTION, {DICT})
+    {01} = func EQ({descr_found}, -1)
+jump
+    :notfound1_{01}
+:notfound1_1
+let
+    {descr_found} = func FIND(SHORT.NAME, {DICT})
+    {01} = func EQ({descr_found}, -1)
+jump
+    :notfound2_{01}
+:notfound2_1
+let
+    {descr_found} = func FIND(SHORT.TITLE, {DICT})
+    {01} = func EQ({descr_found}, -1)
+jump
+    :notfound3_{01}
+:notfound3_1
+let
+    {descr_found} = func FIND(SHORT.DESC, {DICT})
+    {01} = func EQ({descr_found}, -1)
+jump
+    :notfound4_{01}
+:notfound4_1
+let
+    {descr_found} = func FIND(NAME.1, {DICT})
+    {01} = func EQ({descr_found}, -1)
+jump
+    :notfound5_{01}
+:notfound5_1
+let
+    {descr_found} = func FIND(DESC, {DICT})
+    {01} = func EQ({descr_found}, -1)
+jump
+    :notfound6_{01}
+:notfound6_1
+let
+    {descr_found} = func FIND(CCY.NAME, {DICT})
+    {01} = func EQ({descr_found}, -1)
+jump
+    :notfound7_{01}
+:notfound7_1
+let
+    {descr_found} = func FIND(ACCOUNT.NAME, {DICT})
+    {01} = func EQ({descr_found}, -1)
+jump
+    :notfound8_{01}
+
+:notfound8_1
+let
+    {descr_posn} = const 1
+jump
+    :proc!
+
+:notfound1_0
+:notfound2_0
+:notfound3_0
+:notfound4_0
+:notfound5_0
+:notfound6_0
+:notfound7_0
+:notfound8_0
+let
+    {descr_posn} = func EXTRACT({descr_found}, 1)
+
+:proc!
+# ------
+getlist
+    SEL_LIST
+:strt
+getnext
+    SEL_LIST
+    {next_id}
+read
+    {tabl}{trail}
+    {next_id}
+let
+    {descr} = field {descr_posn} | func CHANGE(@1, {VM}, ]) | func CHANGE(@2, {SM}, \)
+
+print
+    [{next_id}] {descr}
+jump
+    :strt
+
+:no_more_SEL_LIST
+print
+    # Records shown: {NUMSEL}
+delete
+    &SAVEDLISTS&
+    SEL_LIST
