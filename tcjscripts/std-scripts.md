@@ -12,7 +12,7 @@ Under TAFJ - create that folder in T24\bnk\UD.
 
 ## Alphabetical list
 
-[compare](#compare) | [hist](#hist) | [list](#list) | [tabl](#tabl) | [updrec](#updrec)
+[auth](#auth) | [compare](#compare) | [hist](#hist) | [list](#list) | [tabl](#tabl) | [updrec](#updrec)
 
 ## How to run standard scripts
 
@@ -376,7 +376,6 @@ Output:
     [INFO] tcjscripts\updrec.tcj finished successfully
     Elapsed time: 10.83 s.
 
-
 See the result:
 
     tRun.bat tafcj - -s:tcjscripts\hist.tcj -var:{tabl}:F.TSA.SERVICE -var:{recid}:COB -var:{datawidth}:30 -var:{dictwidth}:17
@@ -443,6 +442,113 @@ Output:
     [INFO] tcjscripts\hist.tcj finished successfully
     Elapsed time: 12.22 s.
 
+Update a value; leave a record unauthorised:
+
+    tRun.bat tafcj PW.MODEL -l:AUTHOR -p:123456 -s:updrec.tcj -var:{tabl}:F.DEPT.ACCT.OFFICER -var:{recid}:42 -var:{field}:PROHIBIT.COMPS -var:{value}:1 -var:{cont}:US0010001 -var:{commit}:INAU
+
+Output:
+
+    tafcj script interpreter 1.4.2
+    (OFS.INITIALISE.SOURCE) : PW.MODEL
+    Script to run: tcjscripts\updrec.tcj
+    Variable(s) passed to script:
+    {tabl} = "F.DEPT.ACCT.OFFICER"
+    {recid} = "42"
+    {field} = "PROHIBIT.COMPS"
+    {value} = "1"
+    {cont} = "US0010001"
+    {commit} = "INAU"
+    Reading script...    
+    Parsing script...    
+    Proceeding ...
+    [INFO] F.DEPT.ACCT.OFFICER>42 committed as INAU
+    [INFO] tcjsripts\updrec.tcj finished successfully
+    Elapsed time: 3.95 s.
+
+See the result:
+
+    Model Bank              DEPT.ACCT.OFFICER SEE
+    
+        DEPT.ACCT.OFF.CODE 42
+    ------------------------------------------------------------------------------
+      1 AREA... Private Corporate Action Officer
+      2 NAME... Private Corporate Action Officer
+      3 DELIVERY.POINT.... BLDG1-4
+      5. 1 PROHIBIT.COMPS. US-001-0001         US Model Bank
+    
+      6 TELEPHONE.NO...... Extn 7044
+      7 FAX.NO............ 01715828282
+      8 TELEX.NO.......... TEMTLX1
+      9 DEPT.LEVEL........ 60                  GENERAL STAFF
+     10 DEPT.PARENT....... 2350                Securities Back Office Manager
+     30 RECORD.STATUS..... INAU                INPUT Unauthorised
+     31 CURR.NO........... 2
+     32. 1 INPU 37075_AUTHORISER__OFS_PW.MODEL
+     33. 1 DATE.TIME...... 19 NOV 25 11:24
+     35 CO.CODE........... GB-001-0001         Model Bank
+     36 DEPT.CODE......... 1                   Implementation
+    ------------------------------------------------------------------------------
+    19 NOV 2025 11:31:10  USER (16 MAY) AUTHORISER        [56220,]PAGE 1
+    ACTION
+    AWAITING PAGE INSTRUCTIONS
+
+Use *{subvalue}* variable for sub-values.
+
+Before we can add another value we need to authorise this record (see [auth](#auth) chapter). Then:
+        
+    tRun.bat tafcj PW.MODEL -l:AUTHOR -p:123456 -s:tcjscripts\updrec.tcj -var:{tabl}:F.DEPT.ACCT.OFFICER -var:{recid}:42 -var:{field}:PROHIBIT.COMPS -var:{value}:2 -var:{cont}:AU0010001
+
+Se the result
+
+    trun.bat tafcj - -s:tcjscripts\hist.tcj -var:{tabl}:f.dept.acct.officer -var:{recid}:42 -var:{datawidth}:35 -var:{dictwidth}:25
+
+Output:
+
+    tafcj script interpreter 1.4.2
+    Script to run: tcjscripts\hist.tcj
+    Variable(s) passed to script:
+    {tabl} = "f.dept.acct.officer"
+    {recid} = "42"
+    {datawidth} = "35"
+    {dictwidth} = "25"
+    Reading script...
+    Parsing script...
+    Proceeding ...
+    [F.DEPT.ACCT.OFFICER>42]
+    (  5) [PROHIBIT.COMPS-2         ]                                     | AU0010001 
+    ( 31) [  CURR.NO                ] 2                                   | 3 
+    ( 32) [  INPUTTER               ] 57027_AUTHORISER__OFS_PW.MODEL      | 31857_AUTHORISER__OFS_PW.MODEL 
+    ( 33) [  DATE.TIME              ] 2511191150                          | 2511191153 
+    ( 34) [  AUTHORISER             ] 86915_AUTHORISER_OFS_PW.MODEL       | 31857_AUTHORISER_OFS_PW.MODEL 
+    [INFO] tcjscripts\hist.tcj finished successfully
+    Elapsed time: 11.97 s.
+
+[Top](#Top)
+
+
+### auth
+
+Authorise a record. Here we authorise the first change done in [updrec](#updrec) chapter.
+
+    tRun.bat tafcj PW.MODEL -l:AUTHOR -p:123456 -s:tcjscripts\auth.tcj -var:{tabl}:F.DEPT.ACCT.OFFICER -var:{recid}:42
+
+Output:
+
+    tafcj script interpreter 1.4.2
+    (OFS.INITIALISE.SOURCE) : PW.MODEL
+    Script to run: tcjscripts\auth.tcj
+    Variable(s) passed to script:
+    {tabl} = "F.DEPT.ACCT.OFFICER"
+    {recid} = "42"
+    Reading script...
+    Parsing script...
+    Proceeding ...
+    Started at: 11:49:59 19 NOV 2025
+    42/PWOFS253238691542600.01/1,AREA:1:1=Private Corporate Action Officer,NAME:1:1=Private Corporate Action Officer,DELIVERY.POINT: ...
+    Finished at: 11:50:01 19 NOV 2025
+    [INFO] tcjscripts\auth.tcj finished successfully
+    Elapsed time: 7.13 s.
+    
 [Top](#Top)
 
 ### tabl
