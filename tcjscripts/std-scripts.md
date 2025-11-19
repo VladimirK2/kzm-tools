@@ -468,14 +468,14 @@ Output:
 See the result:
 
     Model Bank              DEPT.ACCT.OFFICER SEE
-    
+
         DEPT.ACCT.OFF.CODE 42
     ------------------------------------------------------------------------------
       1 AREA... Private Corporate Action Officer
       2 NAME... Private Corporate Action Officer
       3 DELIVERY.POINT.... BLDG1-4
       5. 1 PROHIBIT.COMPS. US-001-0001         US Model Bank
-    
+
       6 TELEPHONE.NO...... Extn 7044
       7 FAX.NO............ 01715828282
       8 TELEX.NO.......... TEMTLX1
@@ -495,10 +495,10 @@ See the result:
 Use *{subvalue}* variable for sub-values.
 
 Before we can add another value we need to authorise this record (see [auth](#auth) chapter). Then:
-        
+
     tRun.bat tafcj PW.MODEL -l:AUTHOR -p:123456 -s:tcjscripts\updrec.tcj -var:{tabl}:F.DEPT.ACCT.OFFICER -var:{recid}:42 -var:{field}:PROHIBIT.COMPS -var:{value}:2 -var:{cont}:AU0010001
 
-Se the result
+See the result:
 
     trun.bat tafcj - -s:tcjscripts\hist.tcj -var:{tabl}:f.dept.acct.officer -var:{recid}:42 -var:{datawidth}:35 -var:{dictwidth}:25
 
