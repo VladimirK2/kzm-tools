@@ -1,0 +1,104 @@
+#    -var:{tabl}:F.STANDARD.SELECTION -var:{recid}:STANDARD.SELECTION [-var:{ignore_errors}:1]
+#    -var:{tabl}:F.STANDARD.SELECTION -var:{recid}:* [-var:{inputter}:1_R23m]  [-var:{exclude}:_SC.MULTI.SEC.TRANSFER_]  [-var:{cmpid}:nl0020001]
+let
+    {strt} = func TIMEDATE()
+print
+    Started at: {strt}
+
+default
+    {cmpid} = const {BLANK}
+    {exclude} = const __
+    {inputter} = const []
+    {ignore_errors} = const 0
+
+let
+    {app} = func FIELD({tabl}, ., 2, 99)
+    {cmpid} = func UPCASE({cmpid})
+    {onezero} = func EQ({cmpid}, {BLANK})
+jump
+    :nocmp{onezero}
+
+:nocmp0
+info
+    Switching to company [{cmpid}]
+company
+    {cmpid}
+
+:nocmp1
+
+let
+    {01} = func EQ({recid}, *)
+jump
+    :allrec{01}
+
+:allrec0
+let
+    {to_jump} = const fini
+:runofs
+runofs
+    {app},/A/PROCESS//0,{USERNAME}/{PASSWORD},{recid}
+let
+    {short_output} = func LEFT({OFSOUTPUT}, 128)
+jump
+    :fork{OFSCOMMIT}{ignore_errors}
+
+:fork10
+:fork11
+print
+    {short_output} ...
+jump
+    :{to_jump}
+
+:fork01
+warn
+    OFS error (ignored)::
+    {OFSOUTPUT}
+jump
+    :{to_jump}
+
+:fork00
+error
+    OFS error::
+    {OFSOUTPUT}
+exit
+    100
+
+:allrec1
+let
+    {to_jump} = const strt
+
+select
+    TO-AUTH
+    {tabl}$NAU
+    WITH INPUTTER EQ "{inputter}"
+    BY @ID
+
+getlist
+    TO-AUTH
+:strt
+getnext
+    TO-AUTH
+    {recid}
+let
+    {01} = func INDEX({exclude}, _{recid}_, 1) | func GT(@1, 0)
+jump
+    :skip{01}
+
+:skip0
+jump
+    :runofs
+
+:skip1
+jump
+    :strt
+
+:no_more_TO-AUTH
+exec
+    DELETE &SAVEDLISTS& TO-AUTH
+    Delete_item_msg{VM}1{VM}Delete_item_msg
+
+:fini
+let
+    {fini} = func TIMEDATE()
+print
+    Finished at: {fini}
