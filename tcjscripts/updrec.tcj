@@ -1,10 +1,25 @@
-# -var:{tabl}:F.TSA.SERVICE -var:{recid}:COB -var:{field}:SERVICE.CONTROL -var:{cont}:START
+# -var:{tabl}:F.TSA.SERVICE -var:{recid}:COB -var:{field}:SERVICE.CONTROL -var:{cont}:START -var:{commit}:INAU
 default
     {value} = const {BLANK}
     {subvalue} = const {BLANK}
+    {commit} = const {BLANK}
 read
     {tabl}
     {recid}
 update
     {field}:{value}:{subvalue}={cont}
+
+jump
+    :cmt{commit}
+
+:cmt
 commit
+jump
+    :exi
+
+:cmtINAU
+:cmtIHLD
+:cmtRAW
+    commit
+    {commit}
+:exi
