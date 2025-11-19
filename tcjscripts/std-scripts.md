@@ -528,7 +528,7 @@ Output:
 
 ### auth
 
-Authorise a record. Here we authorise the first change done in [updrec](#updrec) chapter.
+Authorise a record. Here we authorise the first change done to DEPT.ACCT.OFFICER in [updrec](#updrec) chapter.
 
     tRun.bat tafcj PW.MODEL -l:AUTHOR -p:123456 -s:tcjscripts\auth.tcj -var:{tabl}:F.DEPT.ACCT.OFFICER -var:{recid}:42
 
@@ -548,7 +548,7 @@ Output:
     Finished at: 11:50:01 19 NOV 2025
     [INFO] tcjscripts\auth.tcj finished successfully
     Elapsed time: 7.13 s.
-    
+
 [Top](#Top)
 
 ### tabl
