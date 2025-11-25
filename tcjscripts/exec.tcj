@@ -1,0 +1,46 @@
+# ------------------------------------
+# -var:{cmd}:python#20pyscripts\app-data.py#20SPF -var:{expect}:0\_0
+#    &COMO& etc: & should be masked as #26
+# -var:{cmd}:CLEAR-FILE#20#26COMO#26 -var:{expect}:NULL
+# -var:{cmd}:COPY#20FROM#20F.SPF#20TO#20#26TEMP#26#20ALL#20OVERWRITING -var:{expect}:805\]1\]COPY_DONE
+# -var:{cmd}:COPY#20FROM#20F.SPF#20TO#20#26TEMP#26#20ALL#20OVERWRITING -var:{expect}:COPY_DONE -var:{expvalue}:3
+# ------------------------------------
+default
+    {expvalue} = const *
+# ^ can't be passed from Teamcity; use \_ there
+let
+    {cmd} = func CHANGE({cmd}, #26, &)
+    {expect} = func CHANGE({expect}, \_, {FM}) | func CHANGE(@1, \], {VM}) | func CHANGE(@2, \\, {SM})
+
+print
+    Command to run: "{cmd}"
+    Expected result: {expvalue} -> "{expect}"
+exec
+    {cmd}
+let
+    {screen} = const {EXECSCREEN}
+print
+    {screen}
+let
+    {rc} = const {EXECRETCODE}
+    {01} = func EQ({expvalue}, *)
+jump
+    :allval_{01}
+
+:allval_0
+let
+    {rc} = func EXTRACT({rc}, 1, {expvalue})
+:allval_1
+
+let
+    {exitcode} = func NE({rc}, {expect})
+jump
+    :e{exitcode}
+:e1
+error
+    Return code ("{rc}") not as expected ("{expect}")
+exit
+    100
+:e0
+print
+    Return code as expected ("{expect}")

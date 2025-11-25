@@ -12,7 +12,7 @@ Under TAFJ - create that folder in T24\bnk\UD.
 
 ## Alphabetical list
 
-[auth](#auth) | [compare](#compare) | [hist](#hist) | [list](#list) | [tabl](#tabl) | [updrec](#updrec)
+[auth](#auth) | [compare](#compare) | [exec](#exec) | [hist](#hist) | [list](#list) | [tabl](#tabl) | [updrec](#updrec)
 
 ## How to run standard scripts
 
@@ -601,6 +601,38 @@ Output:
     [INFO] Record &SAVEDLISTS&>SEL_LIST deleted
     [INFO] tcjscripts\tabl.tcj finished successfully
     Elapsed time: 5.89 s.
+
+[Top](#Top)
+
+### exec
+
+Execute a command with optional return code check.
+
+    tRun.bat tafcj - -s:tcjscripts\exec.tcj -var:{cmd}:COPY#20FROM#20F.SPF#20TO#20#26TEMP#26#20ALL#20OVERWRITING -var:{expect}:805\]1\]COPY_DONE
+
+*#20* in this command is a space, *#26* - an ampersand.
+
+Output:
+
+    tafcj script interpreter 1.4.2
+    Script to run: tcjscripts\exec.tcj
+    Variable(s) passed to script:
+    {cmd} = "COPY FROM F.SPF TO #26TEMP#26 ALL OVERWRITING"
+    {expect} = "805\]1\]COPY_DONE"
+    Reading script...
+    Parsing script...
+    Proceeding ...
+    Command to run: "COPY FROM F.SPF TO &TEMP& ALL OVERWRITING"
+    Expected result: * -> "805 (@VM) 1 (@VM) COPY_DONE"
+    1 records copied
+    Return code as expected ("805 (@VM) 1 (@VM) COPY_DONE")
+    [INFO] Command at the line 19: return code "805 (@VM) 1 (@VM) COPY_DONE"
+    [INFO] tcjscripts\exec.tcj finished successfully
+    Elapsed time: 71.88 s.
+
+Example of check of a value in return code:
+
+    -var:{cmd}:COPY#20FROM#20F.SPF#20TO#20#26TEMP#26#20ALL#20OVERWRITING -var:{expect}:COPY_DONE -var:{expvalue}:3
 
 [Top](#Top)
 
