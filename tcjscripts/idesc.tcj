@@ -1,0 +1,99 @@
+print
+    I-descriptors list
+select
+    SSSEL
+    F.STANDARD.SELECTION
+    WITH (SYS.TYPE EQ "I" OR USR.TYPE EQ "I") AND @ID UNLIKE NOFILE...
+    BY @ID
+getlist
+    SSSEL
+:strt
+getnext
+    SSSEL
+    {next_id}
+let
+    {hdr_done} = const NO
+read
+    F.STANDARD.SELECTION
+    {next_id}
+let
+    {namelist} = field SYS.FIELD.NAME
+    {typelist} = field SYS.TYPE
+    {contlist} = field SYS.FIELD.NO
+    {unamelist} = field USR.FIELD.NAME
+    {utypelist} = field USR.TYPE
+    {ucontlist} = field USR.FIELD.NO
+    {namqty} = func DCOUNT({namelist}, {VM})
+    {typqty} = func DCOUNT({typelist}, {VM})
+    {contqty} = func DCOUNT({contlist}, {VM})
+    {numbers} = const {namqty}{FM}{typqty}{FM}{contqty}
+    {maxqty} = func MAXIMUM({numbers}) | func ADDS(@1, 1)
+# deal with the case when lists have different VM count - e.g. in DISPO.ITEMS
+    {namelist} = func REPLACE({namelist}, 1, {maxqty}, {BLANK})
+    {typelist} = func REPLACE({typelist}, 1, {maxqty}, {BLANK})
+    {contlist} = func REPLACE({contlist}, 1, {maxqty}, {BLANK})
+    {reuses} = func STR( {PIPE}S{PIPE}{SPACE}{VM}, {maxqty} ) | func DEL( @1, 1, {maxqty} )
+    {namelist} = func CATS({reuses}, {namelist})
+    {usize} = func DCOUNT({unamelist}, {VM})
+    {reuseu} = func STR( {PIPE}U{PIPE}{SPACE}{VM}, {usize} )
+    {unamelist} = func CATS({reuseu}, {unamelist})
+# -----
+    {allnames} = const {namelist}{VM}{unamelist}
+    {alltypes} = const {typelist}{VM}{utypelist}
+    {allconts} = const {contlist}{VM}{ucontlist}
+    {qty} = func DCOUNT({alltypes}, {VM})
+    {namqty} = func DCOUNT({allnames}, {VM})
+    {contqty} = func DCOUNT({allconts}, {VM})
+    {cntr} = const 0
+:rec_strt
+:fld0
+let
+    {cntr} = func ADDS({cntr}, 1)
+    {01} = func LE({cntr}, {qty})
+jump
+    :rec{01}
+
+:rec1
+let
+    {type} = func EXTRACT({alltypes}, 1, {cntr})
+    {01} = func EQ({type}, I)
+jump
+    :fld{01}
+:fld1
+
+let
+    {cont} = func EXTRACT({allconts}, 1, {cntr})
+    {strt} = func LEFT({cont}, 9)
+    {01} = func EQ({strt}, LOCAL.REF)
+jump
+    :lref{01}
+
+:lref0
+let
+    {name} = func EXTRACT({allnames}, 1, {cntr}) | func FMT(@1, 45L)
+    {cont} = func CHANGE({cont}, {SM}, {BLANK})
+jump
+    :ishdr{hdr_done}
+
+:ishdrNO
+print
+    {BLANK}
+    * ------------------------ {next_id}
+let
+    {hdr_done} = const YES
+:ishdrYES
+print
+    {name} {cont}
+:lref1
+jump
+    :fld0
+
+jump
+    :rec_strt
+
+:rec0
+jump
+    :strt
+:fini
+
+:no_more_SSSEL

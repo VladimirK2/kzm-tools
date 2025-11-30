@@ -12,7 +12,7 @@ Under TAFJ - create that folder in T24\bnk\UD.
 
 ## Alphabetical list
 
-[auth](#auth) | [compare](#compare) | [exec](#exec) | [hist](#hist) | [list](#list) | [tabl](#tabl) | [updrec](#updrec)
+[auth](#auth) | [compare](#compare) | [exec](#exec) | [hist](#hist) | [idesc](#idesc) | [list](#list) | [tabl](#tabl) | [updrec](#updrec)
 
 ## How to run standard scripts
 
@@ -636,4 +636,39 @@ Example of check of a value in return code:
 
 [Top](#Top)
 
-**TO BE CONTINUED**
+### idesc
+
+Output information about all I-descriptors in the environment.
+
+    trun tafcj - -s:tcjscripts\idesc.tcj -a:idesc.txt
+
+Contents of idesc.txt:
+
+    I-descriptors list
+    
+    * ------------------------ AC.ACCOUNT.SWEEP.HIST
+    |S| ACCOUNT                                   @ID["-",1,1]
+    |S| TO.ACCT                                   SWEEP.REF["-",1,1]
+    |S| FROM.ACCT                                 SWEEP.REF["-",2,1]
+    |S| ALT.ACCT                                  @ID["-",1,1]
+    |S| ALT.SWEEP.DATE                            SWEEP.DATE
+    
+    * ------------------------ AC.AUTO.PAY.TRANS
+    |S| ACCOUNT.ID                                FIELD(@ID,".",1)
+    |S| TRANS.ID                                  FIELD(@ID,".",2)
+    
+    ..... cut
+
+    * ------------------------ VERSION
+    |U| APPLICATION                               @ID[",",1,1]
+
+    * ------------------------ XT.KEYS.TELEKURS
+    |S| SELDATE                                   FIELD(@ID,".",COUNT(@ID,"."),1)
+
+*|S|* means that this descriptor is in system fields, *|U|* - in user ones.
+
+Could be useful to apply after upgrade to see what was dropped in the core  :))
+
+[Top](#Top)
+
+**That's all folks!**
