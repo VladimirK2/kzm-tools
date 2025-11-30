@@ -17,6 +17,8 @@ TAFCJ script, among other things, allows conditional update of data records. It 
 
 It's called "TAFCJ" because it works both in TAFC and TAFJ. Script interpreter is a jBC program.
 
+License: WTFPL. Use this software totally at your own risk (like TAFC, for example)!
+
 ## Is it safe assuming T24 transactions, concat files update etc?
 
 Yes, it uses OFS to update a record (to be exact - OFS.BULK.MANAGER). Firstly the full record image is written to $NAU file with IHLD status; then OFS with "I" function and zero authorisation is performed (can be other update options - leave in INAU or IHLD, for example). (Note: if record in \$NAU file exists already, fatal error will be raised.)
@@ -28,7 +30,7 @@ In case of OFS error IHLD record is deleted.
 - Easy to store scripts in git; CI/CD can be built over it.
 - Some TAFJ problems are corrected in the script interpreter - e.g. SEQS() function absense etc.
 - No more need in one-time subroutines/programs.
-- Finally, no need in DBTools or JED when certain standard scripts are available.
+- Finally, in many cases there's no need in DBTools or JED when certain standard scripts are available.
 
 ## How to run
 
