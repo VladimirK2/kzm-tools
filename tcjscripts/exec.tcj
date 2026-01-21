@@ -7,20 +7,26 @@
 # ------------------------------------
 default
     {expvalue} = const *
+    {expect} = const NONEEXPECTED
 # ^ can't be passed from Teamcity; use \_ there
 let
     {cmd} = func CHANGE({cmd}, #26, &)
+    {nottocheck} = func EQ({expect}, NONEEXPECTED)
     {expect} = func CHANGE({expect}, \_, {FM}) | func CHANGE(@1, \], {VM}) | func CHANGE(@2, \\, {SM})
-
-print
-    Command to run: "{cmd}"
-    Expected result: {expvalue} -> "{expect}"
 exec
     {cmd}
 let
     {screen} = const {EXECSCREEN}
 print
     {screen}
+jump
+   :fin{nottocheck}
+:fin1
+#print
+#    Finished with {EXECRETCODE}
+jump
+    :fini
+:fin0
 let
     {rc} = const {EXECRETCODE}
     {01} = func EQ({expvalue}, *)
@@ -44,3 +50,4 @@ exit
 :e0
 print
     Return code as expected ("{expect}")
+:fini
