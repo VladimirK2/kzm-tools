@@ -1,7 +1,12 @@
-# -var:{tabl}:fau1.industry -var:{sel_crit}:WITH#20@ID#20EQ#209534
+# -var:{tabl}:fau1.industry -var:{sel_crit}:WITH#20@ID#20EQ#209534  
+# -var:{addfield}:mnemonic
 
 default
     {tabl} = const {BLANK}
+    {addfield} = const {BLANK}
+
+let
+    {toadd} = func NE({addfield}, {BLANK})
 
 let
     {01} = func EQ({tabl}, {BLANK})
@@ -18,6 +23,7 @@ default
     {sel_crit} = const {BLANK}
 let
     {tabl} = func UPCASE({tabl})
+    {addfield} = func UPCASE({addfield})
     {trail} = func FIELD({tabl}, ~, 2)
     {tabl} = func FIELD({tabl}, ~, 1)
     {onezero} = func EQ({trail}, {BLANK})
@@ -122,8 +128,21 @@ read
 let
     {descr} = field {descr_posn} | func CHANGE(@1, {VM}, ]) | func CHANGE(@2, {SM}, \)
 
+jump
+    :addfld{toadd}
+
+:addfld1
+let
+    {addon} = field {addfield} | const @1{SPACE}
+jump
+    :output
+    
+:addfld0
+let 
+    {addon} = const {BLANK}
+:output
 print
-    [{next_id}] {descr}
+    [{next_id}] {addon}{descr}
 jump
     :strt
 

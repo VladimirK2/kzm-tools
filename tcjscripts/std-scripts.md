@@ -602,6 +602,10 @@ Output:
     [INFO] tcjscripts\tabl.tcj finished successfully
     Elapsed time: 5.89 s.
 
+Add another field to output:
+
+    trun tafcj - -s:tcjscripts\tabl.tcj -var:{tabl}:f.company -var:{addfield}:mnemonic
+
 [Top](#Top)
 
 ### exec
