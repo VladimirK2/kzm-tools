@@ -1,0 +1,72 @@
+#  -var:{tabl}:f.version -var:{tofind}:My#20Text
+
+default
+    {tabl} = const {BLANK}
+    {tofind} = const {BLANK}
+
+let
+    {01} = func EQ({tabl}, {BLANK})
+jump
+    :inptabl{01}
+
+:inptabl1
+print
+    Table :
+let
+    {tabl} = func INPUT()
+
+:inptabl0
+
+let
+    {tabl} = func UPCASE({tabl})
+    {01} = func EQ({tofind}, {BLANK})
+    
+jump
+    :inptofind{01}
+
+:inptofind1
+print
+    What to search :
+let
+    {tofind = func INPUT()
+
+:inptofind0
+
+print
+    # Table name: [{tabl}]
+    # Search string: [{tofind}]
+select
+    SEL_LIST
+    {tabl}
+    BY @ID
+
+# ------
+getlist
+    SEL_LIST
+:strt
+getnext
+    SEL_LIST
+    {next_id}
+read
+    {tabl}
+    {next_id}
+
+let
+    {found} = func INDEX({RECORD}, {tofind}, 1) | if @1 GT 0 then 1 else 0
+jump
+    :outp{found}
+    
+:outp1
+print 
+    {next_id}
+:outp0
+jump
+    :strt
+
+:no_more_SEL_LIST
+delete
+    &SAVEDLISTS&
+    SEL_LIST
+
+    
+    
