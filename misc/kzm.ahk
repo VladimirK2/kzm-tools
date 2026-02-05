@@ -1,6 +1,8 @@
 #Requires AutoHotkey v2.0
 #SingleInstance
 
+; https://www.autohotkey.com/docs/v2/KeyList.htm
+
 ; =================== TAFJ terminal
 
 #HotIf WinActive("C:\Windows\system32\cmd.exe")
@@ -28,18 +30,21 @@ F1::
     }
 
 F2::
+PgUp::
     {
     send "^B{Enter}"
     return
     }
 
 F3::
+PgDn::
     {
     send "^F{Enter}"
     return
     }
 
 F4::
+End::
     {
     send "^E{Enter}"
     return
@@ -60,6 +65,12 @@ F6::
 F7::
     {
     send "^T{Enter}"
+    return
+    }
+
+Home::
+    {
+    send "P1{Enter}"
     return
     }
 
@@ -178,6 +189,10 @@ m::M
 
 Home::Send "^A"
 End::Send "^E"
+
+PgUp::send "{F2}"
+PgDn::send "{F3}"
+^Delete::send "^K"
 
 #HotIf
 
