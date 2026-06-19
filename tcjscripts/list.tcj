@@ -1,9 +1,11 @@
 #   -var:{tabl}:f.spf -var:{recid}:system
 #   -var:{tabl}:fbnk.customer~his -var:{recid}:100100;1
+#   -var:{noempty}:1 - show only populated fields
 
 default
     {tabl} = const
     {recid} = const
+    {noempty} = const 0
 let
     {01} = func EQ({tabl}, {BLANK})
 
@@ -34,6 +36,7 @@ let
 let
     {trail}  =  func FIELD({tabl}, ~, 2) | func UPCASE(@1)
     {tabl}=func UPCASE({tabl}) | func FIELD(@1, ~, 1)
+
     {appl} = func FIELD({tabl}, ., 2, 999)
     {onezero} = func EQ({trail}, {BLANK})
 jump
@@ -85,6 +88,7 @@ jump
 let
     {fmtcntr} =     func FMT({cntr}, 3R)
     {data} =        func EXTRACT({fullrec}, {cntr})
+    {raw_data} = func CHANGE({data}, {VM}, {BLANK}) | func TRIM(@1, {SPACE}, 'A')
     {dict} =        func EXTRACT({fulldict}, {cntr})
     {zerononzero} = func INDEX({data}, {VM}, 1)
     {vm_there} =    func GE({zerononzero}, 1)
@@ -99,6 +103,7 @@ jump
 let
     {vm_count} = func DCOUNT({data}, {VM})
     {old_data} = const {data}
+
     {data} = const
     {cntr_vm} = const 0
 :vm_strt
@@ -134,7 +139,6 @@ jump
 :vm0
 let
     {data} = func CONVERT({FM}{VM}{SM}, ^]\, {data}) | func TRIM(@1, {TM}, A)
-
 jump
     :lrsingle{islocref}
 :lrsingle1
@@ -159,9 +163,21 @@ let
 :lrsingleEnd
 
 let
+    {nodata} = func EQ({raw_data}, {BLANK})
+jump
+    :show{noempty}{nodata}
+
+:show00
+:show01
+:show10
+
+let
     {line} = const ({fmtcntr}) [{dictout}] {data}
 print
     {line}
+
+:show11
+
 jump
     :strt
 
