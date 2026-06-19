@@ -20,7 +20,7 @@ let
 let
     {tabl} = func UPCASE({tabl})
     {01} = func EQ({tofind}, {BLANK})
-    
+
 jump
     :inptofind{01}
 
@@ -28,7 +28,7 @@ jump
 print
     What to search :
 let
-    {tofind = func INPUT()
+    {tofind} = func INPUT()
 
 :inptofind0
 
@@ -41,6 +41,8 @@ select
     BY @ID
 
 # ------
+let
+    {cntr} = const 0
 getlist
     SEL_LIST
 :strt
@@ -55,9 +57,11 @@ let
     {found} = func INDEX({RECORD}, {tofind}, 1) | if @1 GT 0 then 1 else 0
 jump
     :outp{found}
-    
+
 :outp1
-print 
+let
+    {cntr} = func ADDS({cntr}, 1)
+print
     {next_id}
 :outp0
 jump
@@ -67,6 +71,7 @@ jump
 delete
     &SAVEDLISTS&
     SEL_LIST
+print
+    Records found: {cntr}
 
-    
-    
+
