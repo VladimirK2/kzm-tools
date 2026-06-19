@@ -1,9 +1,10 @@
-# -var:{tabl}:fau1.industry -var:{sel_crit}:WITH#20@ID#20EQ#209534  
-# -var:{addfield}:mnemonic
+# -var:{tabl}:fau1.industry -var:{sel_crit}:WITH#20@ID#20EQ#209534
+# -var:{addfield}:mnemonic   -var:{idlen}:16
 
 default
     {tabl} = const {BLANK}
     {addfield} = const {BLANK}
+    {idlen} = const 0
 
 let
     {toadd} = func NE({addfield}, {BLANK})
@@ -16,6 +17,8 @@ jump
 :inptabl1
 print
     Table :
+let
+    {tabl} = func INPUT() | func UPCASE(@1)
 
 :inptabl0
 
@@ -133,14 +136,24 @@ jump
 
 :addfld1
 let
-    {addon} = field {addfield} | const @1{SPACE}
+    {addon} = field {addfield} | const [@1]{SPACE}
 jump
     :output
-    
+
 :addfld0
-let 
+let
     {addon} = const {BLANK}
 :output
+
+let
+    {01} = func NE({idlen}, 0)
+jump
+    :pad{01}
+:pad1
+let
+   {next_id} = func FMT({next_id}, {idlen}L)
+
+:pad0
 print
     [{next_id}] {addon}{descr}
 jump
