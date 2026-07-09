@@ -1,27 +1,31 @@
 #Requires AutoHotkey v2.0
 #SingleInstance
 
+; CoordMode("Mouse","Screen")
+
 ; https://www.autohotkey.com/docs/v2/KeyList.htm
+
+OnClipboardChange MyClipb
+
+NumpadAdd::Send "{NumpadAdd}"
 
 ; =================== TAFJ terminal
 
-#HotIf WinActive("C:\Windows\system32\cmd.exe")
+#HotIf WinActive("TAFJ1")
 
 ; copy
-NumpadDiv::Send "{Enter}"
+; NumpadDiv::Send "{Enter}"
 
 ; paste
-NumpadAdd::Send "{RButton}"
+Numpad0 & NumpadDot::
+    {
+;    Send "{LButton}"
+    MouseMove 1900, 20
+    Sleep 100
+    Send "{RButton}"
+    return
+    }
 
-#HotIf
-
-#HotIf WinActive("C:\Windows\system32\cmd.exe - trun  tex")
-
-; copy
-NumpadDiv::Send "{Enter}"
-
-; paste
-NumpadAdd::Send "{RButton}"
 
 F1::
     {
@@ -44,7 +48,7 @@ PgDn::
     }
 
 F4::
-End::
+;End::
     {
     send "^E{Enter}"
     return
@@ -62,17 +66,17 @@ F6::
     return
     }
 
-F7::
+^F7::
     {
     send "^T{Enter}"
     return
     }
 
-Home::
-    {
-    send "P1{Enter}"
-    return
-    }
+;Home::
+;    {
+;    send "P1{Enter}"
+;    return
+;    }
 
 q::Q
 w::W
@@ -133,7 +137,7 @@ m::M
 
 ; ----- Mobaxterm
 
-#HotIf WinActive("Miami/GVA R11")
+#HotIf WinActive("R11")
 q::Q
 w::W
 e::E
@@ -197,17 +201,103 @@ PgDn::send "{F3}"
 #HotIf
 
 ; ---- keys remapping
-Capslock::return
 
-Numpad0::RWin
+>!T::Send " to "
+
+Capslock::
+    {
+;    Send " to "
+    return
+    }
+
+;;; Numpad0::RWin
 
 ; Copy/Paste
-NumpadDiv::Send "^{Ins}"
-NumpadAdd::Send "+{Ins}"
+NumpadDiv::
+    {
+    Send "^{Ins}"
+    return
+    }
+
+;;; NumpadEnter::Send "+{Ins}"
+Numpad0 & NumpadDot::Send "+{Ins}"
 
 ; Show clipboard
-NumpadSub::Run "D:Users\x594822\dev\kzm\py\clipb.pyw"
+^NumpadSub::Run "pythonw clipb.pyw"
+
+; manage clipboard history
+^NumpadAdd::Run "pythonw file-viewer-v2.pyw clipb.txt"
 
 ; Ru keyboard
-NumpadMult::Run "D:Users\x594822\dev\kzm\py\ru-keyb.pyw"
+NumpadDot::Run "pythonw ru-keyb.pyw"
 
+NumpadAdd & 1::
+    {
+    If WinActive("TAFJ1") {
+;        MsgBox "yes"
+        WinMinimize "TAFJ1"
+    }
+    else {
+        WinActivate "TAFJ1"
+    }
+    return
+    }
+
+NumpadAdd & 2::
+   {
+    If WinActive("TAFJ2") {
+        WinMinimize "TAFJ2"
+    }
+    else {
+        WinActivate "TAFJ2"
+    }
+    return
+    }
+
+
+; browser
+NumpadAdd & B::Send "#1"
+; mail
+NumpadAdd & M::Send "#2"
+; teams
+;NumpadAdd & T::Send "#3"
+; editor
+NumpadAdd & E::Send "#3"
+; mobaXterm
+NumpadAdd & X::Send "#4"
+; far
+NumpadAdd & F::Send "#5"
+; tafJ
+; NumpadAdd & J::Send "#6"
+; DS
+NumpadAdd & D::Send "#7"
+; Excel or someth else
+NumpadAdd & T::Send "#8"
+; minimize all
+NumpadAdd & Space::Send "#m"
+
+NumpadAdd & Z::
+    {
+    WinWait "MINGW"
+    WinActivate "MINGW"
+    WinMove 440, 196, A_ScreenWidth/1.2, A_ScreenHeight/1.2, "MINGW"
+    return
+    }
+
+MyClipb(dataType)
+    {
+    if dataType = 1
+        {
+
+        Text := FileRead("clipb.txt")
+        clipb := a_clipboard
+        FoundPos := InStr(Text, Clipb "`r`n")
+        if FoundPos = 0
+            {
+
+;    FileAppend FoundPos, "D:\Users\x594822\dev\kzm\runtime\clipb.txt"
+            FileAppend A_Clipboard "`r`n", "clipb.txt"
+            }
+        }
+    return
+    }
