@@ -14,7 +14,7 @@ PROGRAM rec2tcj
 
     param_one = SENTENCE(1)
 
-    CRT SYSTEM(40) : ' v. 1.000'
+    CRT SYSTEM(40) : ' v. 1.002'
     IF param_one EQ '' THEN
         CRT 'Usage: ' : SYSTEM(40) : ' [-t:]TABLE [-r:]RECORD [options]'
         CRT '---------------------------------------------------------------------------------------------------------'
@@ -22,13 +22,16 @@ PROGRAM rec2tcj
         CRT 'they can be placed anywhere in the command line.'
         CRT 'RECORD can be set as ! to grab the whole table'
         CRT '---------------------------------------------------------------------------------------------------------'
-        CRT 'Options are either:'
+        CRT 'Main options are either:'
         CRT '-x:FIELD1:FIELD2:etc   fields to exclude'
         CRT '-c:        commit mode (INAU / IHLD / RAW)'
         CRT '---------------------------------------------------------------------------------------------------------'
         CRT '... or:'
         CRT '-raw       raw mode - can be used for L apps or data files without corresponding application or even DICT'
         CRT '---------------------------------------------------------------------------------------------------------'
+        CRT 'Other options:'
+        CRT '-s:number - sort on field number'
+        CRT '-s:name - sort on field name (default)'
         CRT '-l:list    process a saved list in format TABLE>REC'
         CRT '-d:field:content    default a field, e.g. -d:ACCOUNT.OFFICER:1 (mask spaces in content with #20)'
         CRT '-o:file    output to &SAVEDLISTS&\file (or to other folder if specified), otherwise output to screen'
@@ -45,6 +48,7 @@ PROGRAM rec2tcj
     the_file = ''  ;  rec_id = ''  ;  commit_mode = ''  ;  raw_mode = @FALSE
     last_file = ''
     default_fields = ''    ;  default_cont = ''
+    sort_mode = ''
 
     IF params_are_fixed THEN
         the_file = param_one
@@ -87,6 +91,9 @@ PROGRAM rec2tcj
 
             CASE down_case_par EQ '-o:'
                 write_to = FIELD(a_param, ':', 2, 99)
+
+            CASE down_case_par EQ '-s:'
+                sort_mode = FIELD(a_param, ':', 2)   ;* either [field] name or number
 
             CASE down_case_par EQ '-x:'
                 param_except_list = a_param[4, 99999]
@@ -228,19 +235,24 @@ ProcRec:
     END ELSE
 
         app_name = FIELD(FIELD(the_file, '.', 2, 99), '$', 1)
+* DEBUG
+        * CALL App.getFields(app_name, appFields, errorList)  ;* errorList : (-1) CHECK.ROUTINE.EXIST failed for ENQUIRY
 
-        rezt = CALLC JBASESubroutineExist(app_name, sub_info)
-        IF TAFJ_on THEN
-            IF sub_info NE 'Subroutine' THEN
-                CRT 'Application ' : app_name : ' does not exist'
-                EXIT(11)
-            END
-        END ELSE
-            IF rezt NE 1 THEN
-                CRT 'Application ' : app_name : ' does not exist'
-                EXIT(12)
-            END
-        END
+        * CALL App.getCommonVars(app_name, idF, idN, idT, idCheckfile, idConcatfile, MAT nArray, MAT fArray, MAT tArray, MAT checkfileArray, MAT concatfileArray, blockedFunctions, nonStopOperation, errorList)
+
+        * rezt = CALLC JBASESubroutineExist(app_name, sub_info)
+
+        * IF TAFJ_on THEN
+            * IF sub_info NE 'Subroutine' THEN
+                * CRT 'Application ' : app_name : ' does not exist'
+                * EXIT(11)
+            * END
+        * END ELSE
+            * IF rezt NE 1 THEN
+                * CRT 'Application ' : app_name : ' does not exist'
+                * EXIT(12)
+            * END
+        * END
 
         IF NOT(same_file) THEN
             OPEN 'DICT', the_file TO f_dict ELSE
@@ -250,7 +262,7 @@ ProcRec:
         END
 
         dict_list = ''
-        SELECT f_dict TO sel_dict
+        SSELECT f_dict TO sel_dict
         LOOP
             WHILE READNEXT dict_id FROM sel_dict DO
             READ r_dict FROM f_dict, dict_id ELSE CONTINUE
@@ -258,7 +270,11 @@ ProcRec:
             IF r_dict<1> EQ 'D' THEN
                 dict_num = r_dict<2>
                 IF dict_num EQ '0' OR NOT(ISDIGIT(dict_num)) THEN CONTINUE
-                dict_list<-1> = dict_num : '*' : dict_id : '*'
+
+                to_add = dict_num : '*' : dict_id : '*'
+                IF sort_mode EQ 'number' THEN dict_list<dict_num> = to_add
+                ELSE dict_list<-1> = to_add
+
             END
         REPEAT
 
