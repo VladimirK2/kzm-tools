@@ -1,0 +1,93 @@
+#   -var:{tabl}:f.spf -var:{recid}:system
+#   -var:{tabl}:fbnk.customer~his -var:{recid}:100100;1
+
+default
+    {tabl} = const
+    {recid} = const
+let
+    {01} = func EQ({tabl}, {BLANK})
+
+jump
+    :inptabl{01}
+
+:inptabl1
+print
+    Table :
+let
+    {tabl} = func INPUT() | func UPCASE(@1)
+
+:inptabl0
+
+let
+    {01} = func EQ({recid}, {BLANK})
+jump
+    :inprec{01}
+
+:inprec1
+print
+    Record :
+let
+    {recid} = func INPUT() | func UPCASE(@1)
+
+:inprec0
+
+let
+    {trail}  =  func FIELD({tabl}, ~, 2) | func UPCASE(@1)
+    {tabl}=func UPCASE({tabl}) | func FIELD(@1, ~, 1)
+
+    {appl} = func FIELD({tabl}, ., 2, 999)
+    {onezero} = func EQ({trail}, {BLANK})
+jump
+    :notrail{onezero}
+:notrail0
+let
+    {trail} = const ${trail}
+
+:notrail1
+
+read
+    {tabl}{trail}
+    {recid}
+jump
+    :norec{NEWRECORD}
+
+:norec0
+jump
+    :cont
+:norec1
+let
+    {recid} = func UPCASE({recid})
+read
+    {tabl}{trail}
+    {recid}
+
+jump
+    :nonono{NEWRECORD}
+
+:cont
+:nonono0
+let
+    {fieldsQ} = func DCOUNT({RECORD}, {FM})
+    {cntr} = const 0
+:strt
+let
+    {cntr} = func ADDS({cntr}, 1)
+    {01} = func LE({cntr}, {fieldsQ})
+jump
+    :show{01}
+:show1
+let
+    {lineno} = func FMT({cntr}, R%4)
+    {line} = func EXTRACT({RECORD}, {cntr})
+print
+    {lineno} {line}
+
+jump
+    :strt
+
+:nonono1
+print
+    Record not found
+
+:show0
+:exi

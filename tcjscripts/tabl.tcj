@@ -1,5 +1,9 @@
 # -var:{tabl}:fau1.industry -var:{sel_crit}:WITH#20@ID#20EQ#209534
 # -var:{addfield}:mnemonic   -var:{idlen}:16
+#
+#set year=%date:~6,4%
+#set month=%date:~3,2%
+# -var:{tabl}:F.USER -var:{addfield}:DATE.LAST.SIGN.ON/TIME.LAST.SIGN.ON -var:{sel_crit}:WITH#20DATE.LAST.SIGN.ON#20LIKE#20%year%%month%...#20BY.DSND#20DATE.LAST.SIGN.ON -var:{idlen}:20
 
 default
     {tabl} = const {BLANK}
@@ -27,6 +31,7 @@ default
 let
     {tabl} = func UPCASE({tabl})
     {addfield} = func UPCASE({addfield})
+    {addfieldQ} = func DCOUNT({addfield}, /)
     {trail} = func FIELD({tabl}, ~, 2)
     {tabl} = func FIELD({tabl}, ~, 1)
     {onezero} = func EQ({trail}, {BLANK})
@@ -136,7 +141,23 @@ jump
 
 :addfld1
 let
-    {addon} = field {addfield} | const [@1]{SPACE}
+    {addFldI} = const 0
+    {addon} = const
+:addFldS
+
+let
+    {addFldI} = func ADDS({addFldI}, 1)
+    {01} = func LE({addFldI}, {addfieldQ})
+jump
+    :addFldE{01}
+:addFldE1
+let
+    {addfldN} = func FIELD({addfield}, /, {addFldI})
+    {addon} = const {addon} | field {addfldN} | const @1 [@2]
+jump
+    :addFldS
+
+:addFldE0
 jump
     :output
 
@@ -155,7 +176,7 @@ let
 
 :pad0
 print
-    [{next_id}] {addon}{descr}
+    [{next_id}] {addon} {descr}
 jump
     :strt
 
