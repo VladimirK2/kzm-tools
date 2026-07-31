@@ -4,7 +4,7 @@ import xlsxwriter
 try:
     inFile = sys.argv[1]
 except:
-    inFile = 'mytest.csv'
+    inFile = 'my.csv'
 
 try:
     delim = sys.argv[2]

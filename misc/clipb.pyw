@@ -33,6 +33,27 @@ def key(event):
     if event.char == event.keysym:
         pass
 
+    elif event.keysym == 'plus':
+
+        try:
+
+            rezt = 0
+            spl = clipb_cont.replace('\r', '').split('\n')
+            for numb in spl:
+                if numb == '':
+                    continue
+                rezt += float(numb)
+
+            outp = str(rezt)
+
+
+        except Exception as e:
+            outp = '{}'.format(e)
+
+        s_clipboard.delete("1.0", END)
+        s_clipboard.insert("1.0", outp)
+
+
     elif event.keysym == 'Left':
         if clipb_cont[0:3] == '   ':
             clipb_cont = clipb_cont[3:]
