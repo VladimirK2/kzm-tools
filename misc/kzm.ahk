@@ -13,13 +13,9 @@ NumpadAdd::Send "{NumpadAdd}"
 
 #HotIf WinActive("TAFJ1")
 
-; copy
-; NumpadDiv::Send "{Enter}"
-
 ; paste
 NumpadDot::
     {
-;    Send "{LButton}"
     MouseMove 1900, 20
     Sleep 100
     Send "{RButton}"
@@ -71,12 +67,6 @@ F6::
     send "^T{Enter}"
     return
     }
-
-;Home::
-;    {
-;    send "P1{Enter}"
-;    return
-;    }
 
 q::Q
 w::W
@@ -137,7 +127,7 @@ m::M
 
 ; ----- Mobaxterm
 
-#HotIf WinActive("Miami/GVA R11")
+#HotIf WinActive("R11")
 q::Q
 w::W
 e::E
@@ -206,11 +196,8 @@ PgDn::send "{F3}"
 
 Capslock::
     {
-;    Send " to "
     return
     }
-
-;;; Numpad0::RWin
 
 ; Copy/Paste
 NumpadDiv::
@@ -219,17 +206,16 @@ NumpadDiv::
     return
     }
 
-;;; NumpadEnter::Send "+{Ins}"
 NumpadDot::Send "+{Ins}"
 
 ; Show clipboard
-^NumpadSub::Run "pythonw \home\kzm\py\clipb.pyw"
+^NumpadSub::Run "pythonw D:\Users\xNNNNNN\dev\kzm\py\clipb.pyw"
 
 ; manage clipboard history
-^NumpadAdd::Run "pythonw \home\kzm\py\file-viewer-v2.pyw \home\kzm\runtime\clipb.txt"
+^NumpadAdd::Run "pythonw D:\Users\xNNNNNN\dev\kzm\py\clipb-tool.pyw D:\Users\xNNNNNN\dev\kzm\runtime\clipb.txt"
 
 ; Ru keyboard
-Numpad0 & NumpadDot::Run "pythonw \home\kzm\py\ru-keyb.pyw"
+Numpad0 & NumpadDot::Run "pythonw D:\Users\xNNNNNN\dev\kzm\py\ru-keyb.pyw"
 
 NumpadAdd & 1::
     {
@@ -300,12 +286,13 @@ MyClipb(dataType)
     if dataType = 1
         {
 
-        Text := FileRead("\home\kzm\runtime\clipb.txt")
+        Text := FileRead("D:\Users\xNNNNNN\dev\kzm\runtime\clipb.txt")
         clipb := a_clipboard
         FoundPos := InStr("`r`n" Text "`r`n", "`r`n" Clipb "`r`n")
         if FoundPos = 0
             {
-            FileAppend A_Clipboard "`r`n", "\home\kzm\runtime\clipb.txt"
+
+            FileAppend "`r`n" A_Clipboard "`r`n", "D:\Users\xNNNNNN\dev\kzm\runtime\clipb.txt"
             }
         }
     return

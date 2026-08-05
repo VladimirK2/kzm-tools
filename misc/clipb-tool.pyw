@@ -27,6 +27,7 @@
 # Enter   - put current line to clipboard
 # Enter again - add current line to clipboard
 # Esc - exit and save changes
+# if a line is what's in clipboard, it's highlighted
 
 import os
 import sys
@@ -66,6 +67,8 @@ def after(self, ms, func=None, *args):
     are given as parameters to the function call.  Return
     identifier to cancel scheduling with after_cancel."""
 
+def slash():
+    list_area.event_generate("<slash>")
 
 def focus_out(event):
     list_area.config(selectforeground="white")
@@ -95,12 +98,10 @@ def show_list(in_file):
         list_area.insert(tk.END, line)
 
     try:
-        with open(r'\home\kzm\runtime\clipb_list_posn', 'r') as f:
+        with open(r'D:\Users\x594822\dev\kzm\runtime\clipb_list_posn', 'r') as f:
             last_posn = int(f.read())
     except:
         last_posn = 0
-
-    # list_area.bind("<<ListboxSelect>>", showSelected)
 
     list_area.activate(last_posn)
     list_area.select_set(last_posn)
@@ -120,14 +121,10 @@ def do_key(event):
         sel = list_area.curselection()
         if len(sel) != 0:
             posn = int(sel[0])
-            with open(r'\home\kzm\runtime\clipb_list_posn', 'w') as f:
+            with open(r'D:\Users\x594822\dev\kzm\runtime\clipb_list_posn', 'w') as f:
                 f.write(str(posn))
 
         do_exit(event)
-
-    # elif event.keysym == 'Space':
-        # root.clipboard_clear()
-        # root.clipboard_append('')
 
     elif event.keysym == 'Delete':
         sel = list_area.curselection()
@@ -156,22 +153,30 @@ def do_key(event):
         for iline, line in enumerate(all):
             if iline <= posn :
                 list_area.insert(tk.END, line)
-                # print(line)
 
+    elif event.keysym == 'slash':   # show what's in clipboard (automated)
+
+        try:
+            clipb_cont = root.clipboard_get()
+            all = list_area.get(0, tk.END)
+            for posn, line in enumerate(all):
+                if line == clipb_cont:
+                    list_area.itemconfig(posn, {'fg': 'yellow', 'bg': 'blue'})
+                else:
+                    list_area.itemconfig(posn, {'fg': 'black', 'bg': 'darkgray'})
+
+        except:
+            null
 
     elif event.keysym == 'asterisk':   # remove all empty ones
 
         all = list_area.get(0, tk.END)
-        # print(type(all))
-        # print('{}'.format(all))
 
         list_area.delete(0, tk.END)
 
         for line in all:
             if line != '':
                 list_area.insert(tk.END, line)
-                # print(line)
-
 
     elif event.keysym == 'Return':
 
@@ -189,6 +194,7 @@ def do_key(event):
         else:
             root.clipboard_append('\n' + line)
 
+        list_area.event_generate("<slash>")
     return
 
 # ---------------------------------------------
@@ -199,29 +205,20 @@ clipbQ = 0
 root.wm_attributes('-alpha', 0.9)
 
 clipbFont=tkinter.font.Font(family="Lucida Console", size=16)
-# clipbFont=tkinter.font.Font(family="Iosevka", size=14)
-# clipbFont=tkinter.font.Font(family="Courier", size=18)
 
 list_area = tk.Listbox(root)
 list_area.config(font=clipbFont)
 list_area.config(selectbackground="darkgray")
 list_area.config(height=52)
 list_area.config(width=684)
-# list_area.config(fg="white")
 list_area.config(fg="black")
-# list_area.config(bg="darkcyan")
 list_area.config(bg="darkgray")
-# list_area.config(selectmode="tk.SINGLE")
-# list_area.extra = 'list'
 list_area.pack()
-
-# root.overrideredirect(True)   # remove upper bar
 
 window_set()
 
 # https://www.python-course.eu/tkinter_events_binds.php
 
-# root.bind_all('<Alt_L>', altkey)
 root.bind("<Double-Button-1>", do_exit)
 root.bind("<Key>", do_key)
 root.bind("<FocusOut>", focus_out)
@@ -230,5 +227,7 @@ root.bind("<FocusIn>", focus_in)
 root.title(in_file)
 show_list(in_file)
 list_area.focus_set()
+
+root.after(100, slash)
 
 root.mainloop()
