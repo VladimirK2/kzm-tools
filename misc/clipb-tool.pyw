@@ -10,12 +10,12 @@
     # if dataType = 1
         # {
 
-        # Text := FileRead("\home\kzm\clipb.txt")
+        # Text := FileRead("D:\Users\xNNNNNN\dev\kzm\runtime\clipb.txt")
         # clipb := a_clipboard
         # FoundPos := InStr("`r`n" Text "`r`n", "`r`n" Clipb "`r`n")
         # if FoundPos = 0
             # {
-            # FileAppend A_Clipboard "`r`n", "\home\kzm\clipb.txt"
+            # FileAppend "`r`n" A_Clipboard "`r`n", "D:\Users\xNNNNNN\dev\kzm\runtime\clipb.txt"
             # }
         # }
     # return
@@ -98,7 +98,7 @@ def show_list(in_file):
         list_area.insert(tk.END, line)
 
     try:
-        with open(r'D:\Users\x594822\dev\kzm\runtime\clipb_list_posn', 'r') as f:
+        with open(r'D:\Users\xNNNNNN\dev\kzm\runtime\clipb_list_posn', 'r') as f:
             last_posn = int(f.read())
     except:
         last_posn = 0
@@ -121,7 +121,7 @@ def do_key(event):
         sel = list_area.curselection()
         if len(sel) != 0:
             posn = int(sel[0])
-            with open(r'D:\Users\x594822\dev\kzm\runtime\clipb_list_posn', 'w') as f:
+            with open(r'D:\Users\xNNNNNN\dev\kzm\runtime\clipb_list_posn', 'w') as f:
                 f.write(str(posn))
 
         do_exit(event)
@@ -134,6 +134,7 @@ def do_key(event):
         list_area.delete(posn)
 
         list_area.event_generate("<Up>")
+        list_area.event_generate("<slash>")
 
     elif event.keysym == 'minus':   # remove all down
 
@@ -153,6 +154,8 @@ def do_key(event):
         for iline, line in enumerate(all):
             if iline <= posn :
                 list_area.insert(tk.END, line)
+
+        list_area.event_generate("<slash>")
 
     elif event.keysym == 'slash':   # show what's in clipboard (automated)
 
@@ -177,6 +180,8 @@ def do_key(event):
         for line in all:
             if line != '':
                 list_area.insert(tk.END, line)
+
+        list_area.event_generate("<slash>")
 
     elif event.keysym == 'Return':
 
