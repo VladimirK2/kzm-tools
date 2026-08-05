@@ -1,9 +1,32 @@
+#  -var:{appl}:FD.FIDUCIARY
+
+default
+    {appl} = const ALL
+
+let
+    {01} = func EQ({appl}, ALL)
+
+jump
+    :sel{01}
+
+:sel0
+let
+    {with} = const @ID EQ {appl}
+jump
+    :init
+
+:sel1
+let
+    {with} = const (SYS.TYPE EQ "I" OR USR.TYPE EQ "I" OR SYS.TYPE EQ "J" OR USR.TYPE EQ "J") AND @ID UNLIKE NOFILE...
+
+:init
+
 print
     I-descriptors list
 select
     SSSEL
     F.STANDARD.SELECTION
-    WITH (SYS.TYPE EQ "I" OR USR.TYPE EQ "I") AND @ID UNLIKE NOFILE...
+    WITH {with}
     BY @ID
 getlist
     SSSEL
@@ -45,8 +68,9 @@ let
     {namqty} = func DCOUNT({allnames}, {VM})
     {contqty} = func DCOUNT({allconts}, {VM})
     {cntr} = const 0
+
 :rec_strt
-:fld0
+:fld00
 let
     {cntr} = func ADDS({cntr}, 1)
     {01} = func LE({cntr}, {qty})
@@ -57,9 +81,13 @@ jump
 let
     {type} = func EXTRACT({alltypes}, 1, {cntr})
     {01} = func EQ({type}, I)
+    {23} = func EQ({type}, J)
 jump
-    :fld{01}
-:fld1
+    :fld{01}{23}
+
+:fld01
+:fld10
+:fld11
 
 let
     {cont} = func EXTRACT({allconts}, 1, {cntr})
@@ -86,7 +114,7 @@ print
     {name} {cont}
 :lref1
 jump
-    :fld0
+    :fld00
 
 jump
     :rec_strt
