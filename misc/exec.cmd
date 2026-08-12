@@ -1,1 +1,1 @@
-trun tafcj - -s:..\..\..\kzm\tafcj\exec.tcj -var:{cmd}:%1#20%2#20%3#20%4#20%5#20%6#20%7#20%8#20%9#20
+trun tafcj - -s:..\..\..\kzm\tafcj\exec.tcj -var:{cmd}:%1#20%2#20%3#20%4#20%5#20%6#20%7#20%8#20%9

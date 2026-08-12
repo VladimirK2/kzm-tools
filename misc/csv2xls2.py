@@ -1,10 +1,12 @@
 import sys
 import xlsxwriter
 
+# convert csv to xlsx. No yet support for commas inside ""...
+
 try:
     inFile = sys.argv[1]
 except:
-    inFile = 'my.csv'
+    inFile = 'My.csv'
 
 try:
     delim = sys.argv[2]
@@ -40,10 +42,7 @@ for line in csvCont:
             maxlen[colNo] = lenfld
             maxline.append([colNo, lenfld, rowNo])
 
-# for k, v in maxlen.items():
-    # print(k, v)
-
-print(maxline)
+# print(maxline)
 
 # Create a new Excel file and add a worksheet
 workbook = xlsxwriter.Workbook(outFile)
@@ -51,10 +50,6 @@ worksheet = workbook.add_worksheet()
 
 for k, v in maxlen.items():
     worksheet.set_column(k, k, v+1)
-
-# worksheet.set_column(0, 100, 20)
-# worksheet.set_column(3, 3, 15)
-# worksheet.set_column(19, 19, 74)
 
 worksheet.set_zoom(160)
 
@@ -67,7 +62,6 @@ light_green = workbook.add_format({'bold': True, "bg_color": "#C6EFCE"})
 light_blue = workbook.add_format({'bold': True, "bg_color": "#ADD8E6"})
 
 rowNo = -1
-# csvCont = open(inFile, 'rb').read().decode('ascii', 'backslashreplace').replace('\r', '').split('\n')
 
 for line in csvCont:
     if line[0:4] == 'sep=':
@@ -88,6 +82,5 @@ for line in csvCont:
             worksheet.write(rowNo, colNo, fld)
     if rowNo == 0:
         rowNo += 1
-
 
 workbook.close()

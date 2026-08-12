@@ -89,19 +89,27 @@ def do_exit(event):
 
 def show_list(in_file):
 
+    clipb_cont = root.clipboard_get()
     list_area.delete(0, tk.END)
 
     with open(in_file, 'r') as f:
         cont = f.read().split('\n')
 
-    for line in cont:
+    last_posn = -1
+
+    for posn, line in enumerate(cont):
         list_area.insert(tk.END, line)
 
-    try:
-        with open(r'D:\Users\xNNNNNN\dev\kzm\runtime\clipb_list_posn', 'r') as f:
-            last_posn = int(f.read())
-    except:
-        last_posn = 0
+# try to position on clipboard contents - if any
+        if line == clipb_cont:
+            last_posn = posn
+
+    if last_posn == -1:
+        try:
+            with open(r'D:\Users\x594822\dev\kzm\runtime\clipb_list_posn', 'r') as f:
+                last_posn = int(f.read())
+        except:
+            last_posn = 0
 
     list_area.activate(last_posn)
     list_area.select_set(last_posn)
@@ -121,7 +129,7 @@ def do_key(event):
         sel = list_area.curselection()
         if len(sel) != 0:
             posn = int(sel[0])
-            with open(r'D:\Users\xNNNNNN\dev\kzm\runtime\clipb_list_posn', 'w') as f:
+            with open(r'D:\Users\x594822\dev\kzm\runtime\clipb_list_posn', 'w') as f:
                 f.write(str(posn))
 
         do_exit(event)
@@ -160,13 +168,14 @@ def do_key(event):
     elif event.keysym == 'slash':   # show what's in clipboard (automated)
 
         try:
+
             clipb_cont = root.clipboard_get()
             all = list_area.get(0, tk.END)
             for posn, line in enumerate(all):
                 if line == clipb_cont:
-                    list_area.itemconfig(posn, {'fg': 'yellow', 'bg': 'blue'})
+                    list_area.itemconfig(posn, {'fg': 'yellow', 'bg': 'blue', 'selectbackground': 'blue', 'selectforeground': 'yellow'})
                 else:
-                    list_area.itemconfig(posn, {'fg': 'black', 'bg': 'darkgray'})
+                    list_area.itemconfig(posn, {'fg': 'black', 'bg': 'darkgray', 'selectbackground': 'darkgray', 'selectforeground': 'blue'})
 
         except:
             null
