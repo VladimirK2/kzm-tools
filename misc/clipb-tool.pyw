@@ -89,7 +89,12 @@ def do_exit(event):
 
 def show_list(in_file):
 
-    clipb_cont = root.clipboard_get()
+    try:
+        clipb_cont = root.clipboard_get()
+    except:
+        clipb_cont = 'non-text data'
+
+
     list_area.delete(0, tk.END)
 
     with open(in_file, 'r') as f:
@@ -142,7 +147,7 @@ def do_key(event):
         list_area.delete(posn)
 
         list_area.event_generate("<Up>")
-        list_area.event_generate("<slash>")
+        # list_area.event_generate("<slash>")
 
     elif event.keysym == 'minus':   # remove all down
 
