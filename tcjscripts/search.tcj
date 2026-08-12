@@ -5,6 +5,7 @@ default
     {tofind} = const {BLANK}
 
 let
+    {tofind} = func TRIM({tofind})
     {01} = func EQ({tabl}, {BLANK})
 jump
     :inptabl{01}
@@ -14,6 +15,8 @@ print
     Table :
 let
     {tabl} = func INPUT()
+print
+    # Table name: [{tabl}]
 
 :inptabl0
 
@@ -29,12 +32,11 @@ print
     What to search :
 let
     {tofind} = func INPUT()
+print
+    # Search string: [{tofind}]
 
 :inptofind0
 
-print
-    # Table name: [{tabl}]
-    # Search string: [{tofind}]
 select
     SEL_LIST
     {tabl}
