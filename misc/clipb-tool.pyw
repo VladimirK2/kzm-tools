@@ -21,6 +21,8 @@
     # return
     # }
 
+# w       - move current line up
+# s       - move current line down
 # Del     - remove current line
 # *       - remove empty lines
 # -       - remove all below current line
@@ -139,6 +141,33 @@ def do_key(event):
 
         do_exit(event)
 
+    elif event.keysym == 's':   # move current line down
+
+        sel = list_area.curselection()
+        if len(sel) != 0:
+            posn = int(sel[0])
+            allCont = list_area.get(0, tk.END)
+            if posn < len(allCont)-1:
+                thisLine = list_area.get(posn)
+                list_area.insert(posn+2, thisLine)
+                list_area.delete(posn)
+                list_area.event_generate("<Down>")
+                list_area.event_generate("<slash>")
+
+    elif event.keysym == 'w':   # move current line up
+
+        sel = list_area.curselection()
+        if len(sel) != 0:
+            posn = int(sel[0])
+            if posn > 0:
+                thisLine = list_area.get(posn)
+
+                list_area.insert(posn-1, thisLine)
+                list_area.delete(posn+1)
+                list_area.event_generate("<Up>")
+                list_area.event_generate("<Up>")
+                list_area.event_generate("<slash>")
+
     elif event.keysym == 'Delete':
         sel = list_area.curselection()
         if len(sel) == 0:
@@ -147,7 +176,6 @@ def do_key(event):
         list_area.delete(posn)
 
         list_area.event_generate("<Up>")
-        # list_area.event_generate("<slash>")
 
     elif event.keysym == 'minus':   # remove all down
 
@@ -196,6 +224,7 @@ def do_key(event):
                 list_area.insert(tk.END, line)
 
         list_area.event_generate("<slash>")
+        list_area.event_generate("<Up>")
 
     elif event.keysym == 'Return':
 
