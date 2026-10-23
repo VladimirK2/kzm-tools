@@ -14,7 +14,7 @@ PROGRAM rec2tcj
 
     param_one = SENTENCE(1)
 
-    CRT SYSTEM(40) : ' v. 1.002'
+    CRT SYSTEM(40) : ' v. 1.003'
     IF param_one EQ '' THEN
         CRT 'Usage: ' : SYSTEM(40) : ' [-t:]TABLE [-r:]RECORD [options]'
         CRT '---------------------------------------------------------------------------------------------------------'
@@ -30,8 +30,8 @@ PROGRAM rec2tcj
         CRT '-raw       raw mode - can be used for L apps or data files without corresponding application or even DICT'
         CRT '---------------------------------------------------------------------------------------------------------'
         CRT 'Other options:'
-        CRT '-s:number - sort on field number'
-        CRT '-s:name - sort on field name (default)'
+        CRT '-s:number - sort on field number (default)'
+        CRT '-s:name - sort on field name'
         CRT '-l:list    process a saved list in format TABLE>REC'
         CRT '-d:field:content    default a field, e.g. -d:ACCOUNT.OFFICER:1 (mask spaces in content with #20)'
         CRT '-o:file    output to &SAVEDLISTS&\file (or to other folder if specified), otherwise output to screen'
@@ -48,7 +48,7 @@ PROGRAM rec2tcj
     the_file = ''  ;  rec_id = ''  ;  commit_mode = ''  ;  raw_mode = @FALSE
     last_file = ''
     default_fields = ''    ;  default_cont = ''
-    sort_mode = ''
+    sort_mode = 'number'
 
     IF params_are_fixed THEN
         the_file = param_one
@@ -142,10 +142,33 @@ PROGRAM rec2tcj
     IF rec_id EQ '!' OR param_list THEN
 
         IF param_list THEN
-            GETLIST the_list TO proc_list SETTING num_sel ELSE
-                CRT 'List not found (' : the_list : ')'
-                EXIT(7)
+
+            CHANGE '/' TO DIR_DELIM_CH IN the_list
+            CHANGE '\' TO DIR_DELIM_CH IN the_list
+            IF INDEX(the_list, DIR_DELIM_CH, 1) THEN
+
+                delim_qty = DCOUNT(the_list, DIR_DELIM_CH)
+                the_list_dir = FIELD(the_list, DIR_DELIM_CH, 1, delim_qty - 1)
+                the_list = FIELD(the_list, DIR_DELIM_CH, delim_qty)
+
+                OPEN the_list_dir TO fff_list ELSE
+                    CRT 'List file location not found (' : the_list : ')'
+                    EXIT(16)
+                END
+
+                READ proc_list FROM fff_list, the_list ELSE
+                    CRT 'List file not found (' : the_list : ')'
+                    EXIT(7)
+                END
+                CLOSE fff_list
+
+            END ELSE
+                GETLIST the_list TO proc_list SETTING num_sel ELSE
+                    CRT 'List not found (' : the_list : ')'
+                    EXIT(7)
+                END
             END
+
         END ELSE
 
             proc_list = ''     ;   num_sel = 0
@@ -161,15 +184,19 @@ PROGRAM rec2tcj
             CLOSE f_data
         END
 
-*        rec_qty = DCOUNT(proc_list, @FM)
-        CRT 'Records to proceed: ' : num_sel
-        IF num_sel EQ 0 THEN EXIT(0)
+        rec_qty = DCOUNT(proc_list, @FM)
+        CRT 'Lines to proceed: ' : rec_qty
+        IF rec_qty EQ 0 THEN EXIT(0)
 
         LOOP
             REMOVE rec_spec FROM proc_list SETTING the_stat_main
+            IF rec_spec[1, 1] EQ '#' THEN CONTINUE
+
             the_file = FIELD(rec_spec, '>', 1)
             rec_id = FIELD(rec_spec, '>', 2, 999)
             GOSUB ProcRec
+
+            CRT rec_spec, 'processed...'
 
             IF the_stat_main EQ 0 THEN BREAK
         REPEAT
