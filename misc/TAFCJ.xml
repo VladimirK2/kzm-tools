@@ -88,7 +88,7 @@ FMT
             <WordsStyle name="LINE COMMENTS" fgColor="808080" bgColor="FFFFFF" colorStyle="1" fontStyle="2" nesting="0" />
             <WordsStyle name="NUMBERS" fgColor="00FF40" bgColor="FFFFFF" colorStyle="1" fontStyle="1" nesting="0" />
             <WordsStyle name="KEYWORDS1" fgColor="0080FF" bgColor="FFFFFF" colorStyle="1" fontStyle="0" nesting="0" />
-            <WordsStyle name="KEYWORDS2" fgColor="FF0080" bgColor="FFFFFF" colorStyle="1" fontStyle="1" nesting="0" />
+            <WordsStyle name="KEYWORDS2" fgColor="FF8000" bgColor="FFFFFF" colorStyle="1" fontStyle="1" nesting="0" />
             <WordsStyle name="KEYWORDS3" fgColor="008040" bgColor="FFFFFF" colorStyle="1" fontStyle="0" nesting="0" />
             <WordsStyle name="KEYWORDS4" fgColor="808040" bgColor="FFFFFF" colorStyle="1" fontStyle="0" nesting="0" />
             <WordsStyle name="KEYWORDS5" fgColor="FF8040" bgColor="FFFFFF" colorStyle="1" fontStyle="2" nesting="0" />
