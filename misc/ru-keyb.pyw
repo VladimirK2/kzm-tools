@@ -72,12 +72,15 @@ def key(event):
             if copy_done or txt == '':
                 do_exit()
 
+        elif v_key == 'apostrophe':
+            chr = '(soft)'
+
     if chr != '':
 
         copy_done = False
 
         if rus_lat:   # latinics
-            en_text.insert(tk.INSERT, chr)
+#            en_text.insert(tk.INSERT, chr)   # comment - otherwise characters duplicate
             return
 
 
@@ -139,7 +142,7 @@ def do_exit():
 
 def toggle_rus_lat():
     global rus_lat
-    caption = ['RUS', 'LAT']
+    caption = ['on RUS', 'on LAT']
     rus_lat = not(rus_lat)
     command_button_1.configure(text=caption[rus_lat])
 
@@ -150,10 +153,10 @@ root.title('RU keyboard')
 
 the_help = tk.StringVar()
 
-the_font = tkinter.font.Font(family="Lucida Console", size=20, weight="bold")
-bigger_font = tkinter.font.Font(family="Lucida Console", size=24)  #, weight="bold")
+the_font = tkinter.font.Font(family="Lucida Console", size=16, weight="bold")
+bigger_font = tkinter.font.Font(family="Lucida Console", size=18)  #, weight="bold")
 
-command_button_1 = tk.Button(root, text='RUS', fg="blue", font=the_font, command=toggle_rus_lat)
+command_button_1 = tk.Button(root, text='on RUS', fg="blue", font=the_font, command=toggle_rus_lat)
 command_button_1.grid(row=0, column=0, sticky=tk.W)
 
 command_button_2 = tk.Button(root, text='Exit', fg="blue", font=the_font, command=do_exit)
@@ -168,7 +171,7 @@ en_text.grid(row=0, column = 1, rowspan=2, sticky=tk.E)
 root.bind("<Button-1>", callbackM)
 root.bind_all('<Key>', key)
 
-root.geometry('1500x700+420+420')
+root.geometry('1260x560+220+220')
 
 global ctrl_pressed
 global shift_pressed
