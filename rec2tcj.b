@@ -14,7 +14,7 @@ PROGRAM rec2tcj
 
     param_one = SENTENCE(1)
 
-    CRT SYSTEM(40) : ' v. 1.003'
+    CRT SYSTEM(40) : ' v. 1.005'
     IF param_one EQ '' THEN
         CRT 'Usage: ' : SYSTEM(40) : ' [-t:]TABLE [-r:]RECORD [options]'
         CRT '---------------------------------------------------------------------------------------------------------'
@@ -30,9 +30,10 @@ PROGRAM rec2tcj
         CRT '-raw       raw mode - can be used for L apps or data files without corresponding application or even DICT'
         CRT '---------------------------------------------------------------------------------------------------------'
         CRT 'Other options:'
-        CRT '-s:number - sort on field number (default)'
-        CRT '-s:name - sort on field name'
-        CRT '-l:list    process a saved list in format TABLE>REC'
+        CRT '-s:number  sort on field number (default)'
+        CRT '-s:name    sort on field name'
+        CRT '-l:list    process a saved list in format F.TABLE>REC'
+        CRT '-rmr       do not exit on missing records - report them in script comments'
         CRT '-d:field:content    default a field, e.g. -d:ACCOUNT.OFFICER:1 (mask spaces in content with #20)'
         CRT '-o:file    output to &SAVEDLISTS&\file (or to other folder if specified), otherwise output to screen'
         EXIT(1)
@@ -48,7 +49,7 @@ PROGRAM rec2tcj
     the_file = ''  ;  rec_id = ''  ;  commit_mode = ''  ;  raw_mode = @FALSE
     last_file = ''
     default_fields = ''    ;  default_cont = ''
-    sort_mode = 'number'
+    sort_mode = 'number'   ;  rep_missing = @FALSE
 
     IF params_are_fixed THEN
         the_file = param_one
@@ -78,6 +79,9 @@ PROGRAM rec2tcj
 
             CASE NOT(params_are_fixed) AND down_case_par EQ '-r:'
                 rec_id = FIELD(a_param, ':', 2, 99)
+
+            CASE a_param EQ '-rmr'
+                rep_missing = @TRUE
 
             CASE a_param EQ '-raw'
                 raw_mode = @TRUE
@@ -118,7 +122,8 @@ PROGRAM rec2tcj
         EXIT(4)
     END
 
-* ---------------------- TT-1657
+* ------------------
+
     commit_mode_match = 'INAU' :@VM: 'IHLD' :@VM: 'RAW'
 
     IF commit_mode NE '' AND NOT(commit_mode MATCHES commit_mode_match) THEN
@@ -227,9 +232,24 @@ ProcRec:
 
     IF NOT(same_file) THEN
         OPEN the_file TO f_data ELSE CRT 'Data file open error (' : the_file : '), please supply prefix ("F." etc)'  ;  EXIT(9)
+
+        IF NOT(raw_mode) THEN
+            OPEN 'DICT', the_file TO f_dict ELSE
+                CRT 'Application ' : app_name : ' does not have a DICT'
+                EXIT(13)
+            END
+        END
+
     END
 
-    READ the_rec FROM f_data, rec_id ELSE CRT 'Read error (' : the_file : '>' : rec_id  : ')'  ;  EXIT(10)
+    READ the_rec FROM f_data, rec_id ELSE
+        IF rep_missing THEN
+            the_output<-1> = '# Record is missing'
+            the_output<-1> = '# -----------------'
+
+            RETURN
+        END ELSE CRT 'Read error (' : the_file : '>' : rec_id  : ')'  ;  EXIT(10)
+    END
 
     IF raw_mode THEN
         the_rec_out = the_rec
@@ -280,13 +300,6 @@ ProcRec:
                 * EXIT(12)
             * END
         * END
-
-        IF NOT(same_file) THEN
-            OPEN 'DICT', the_file TO f_dict ELSE
-                CRT 'Application ' : app_name : ' does not have a DICT'
-                EXIT(13)
-            END
-        END
 
         dict_list = ''
         SSELECT f_dict TO sel_dict
