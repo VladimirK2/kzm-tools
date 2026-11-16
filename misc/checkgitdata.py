@@ -17,7 +17,7 @@ def list_files_recursive(path='.'):
 
     return ret
 
-gitpath = os.environ['USERPROFILE'] + r'\git\XXXXXXXXXXX\src'
+gitpath = os.environ['USERPROFILE'] + r'\git\NNNNNNNNNN\YYY'
 
 print('Getting file names...', flush=True)
 flist = list_files_recursive(gitpath)
@@ -25,6 +25,8 @@ print('Got', len(flist), flush=True)
 
 idescL = []
 cntr = 0
+
+summary = {}
 
 for jfile in flist:
 
@@ -120,5 +122,16 @@ for jfile in flist:
         print(frecid, recid, 'Match:', frecid == recid)
 
         sys.exit()
+
+    if appid in summary:
+        # if recid in summary[appid]:
+            # print('Duplicate found', appid, '>', recid)
+            # sys.exit()                       # TODO check company as well
+        summary[appid].append(recid)
+    else:
+        summary[appid] = [recid]
+
+for k, v in sorted(summary.items()):
+    print(k, '==>', len(v), 'records')
 
 print('\nSuccess')

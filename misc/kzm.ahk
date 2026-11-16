@@ -11,7 +11,7 @@ NumpadAdd::Send "{NumpadAdd}"
 
 ; =================== TAFJ terminal
 
-#HotIf WinActive("TAFJ1")
+#HotIf WinActive("TAFJ#")
 
 ; paste
 NumpadDot::
@@ -127,7 +127,7 @@ m::M
 
 ; ----- Mobaxterm
 
-#HotIf WinActive("R11")
+#HotIf WinActive("Miami/GVA R11")
 q::Q
 w::W
 e::E
@@ -196,8 +196,11 @@ PgDn::send "{F3}"
 
 Capslock::
     {
+;    Send " to "
     return
     }
+
+;;; Numpad0::RWin
 
 ; Copy/Paste
 NumpadDiv::
@@ -206,78 +209,104 @@ NumpadDiv::
     return
     }
 
+;;; NumpadEnter::Send "+{Ins}"
 NumpadDot::Send "+{Ins}"
 
 ; Show clipboard
-^NumpadSub::Run "pythonw D:\Users\xNNNNNN\dev\kzm\py\clipb.pyw"
+^NumpadSub::Run "pythonw D:\Users\NNNNNNN\dev\kzm\py\clipb.pyw"
 
 ; manage clipboard history
-^NumpadAdd::Run "pythonw D:\Users\xNNNNNN\dev\kzm\py\clipb-tool.pyw D:\Users\xNNNNNN\dev\kzm\runtime\clipb.txt"
+^NumpadAdd::Run "pythonw D:\Users\NNNNNNN\dev\kzm\py\clipb-tool.pyw D:\Users\NNNNNNN\dev\kzm\runtime\clipb.txt"
 
 ; Ru keyboard
-Numpad0 & NumpadDot::Run "pythonw D:\Users\xNNNNNN\dev\kzm\py\ru-keyb.pyw"
+Numpad0 & NumpadDot::Run "pythonw D:\Users\NNNNNNN\dev\kzm\py\ru-keyb.pyw"
 
 NumpadAdd & 1::
     {
-    If WinActive("TAFJ1") {
+    If WinActive("TAFJ#1") {
 ;        MsgBox "yes"
-        WinMinimize "TAFJ1"
+        WinMinimize "TAFJ#1"
     }
     else {
-        WinActivate "TAFJ1"
+        WinActivate "TAFJ#1"
     }
     return
     }
 
 NumpadAdd & 2::
    {
-    If WinActive("TAFJ2") {
-        WinMinimize "TAFJ2"
+    If WinActive("TAFJ#2") {
+        WinMinimize "TAFJ#2"
     }
     else {
-        WinActivate "TAFJ2"
+        WinActivate "TAFJ#2"
     }
     return
     }
 
 NumpadAdd & 3::
    {
-    If WinActive("TAFJ3") {
-        WinMinimize "TAFJ3"
+    If WinActive("TAFJ#3") {
+        WinMinimize "TAFJ#3"
     }
     else {
-        WinActivate "TAFJ3"
+        WinActivate "TAFJ#3"
     }
     return
     }
 
-
 ; browser
 NumpadAdd & B::Send "#1"
+
 ; mail
 NumpadAdd & M::Send "#2"
-; teams
-;NumpadAdd & T::Send "#3"
+
 ; editor
 NumpadAdd & E::Send "#3"
-; mobaXterm
+
+; mobaXterm >>> git bash
 NumpadAdd & X::Send "#4"
+
 ; far
 NumpadAdd & F::Send "#5"
-; tafJ
-; NumpadAdd & J::Send "#6"
-; DS
-NumpadAdd & D::Send "#7"
-; Excel or someth else
-NumpadAdd & T::Send "#8"
+
+; Teams
+NumpadAdd & T::Send "#6"
+
+; DS /Excel / anything to the right of Teams
+NumpadAdd & 7::Send "#7"
+NumpadAdd & 8::Send "#8"
+NumpadAdd & 9::Send "#9"
+
+; shut accidental +...
+NumpadAdd & q::MsgBox "Not mapped", "Key", "T1"
+NumpadAdd & w::MsgBox "Not mapped", "Key", "T1"
+NumpadAdd & r::MsgBox "Not mapped", "Key", "T1"
+NumpadAdd & y::MsgBox "Not mapped", "Key", "T1"
+NumpadAdd & u::MsgBox "Not mapped", "Key", "T1"
+NumpadAdd & i::MsgBox "Not mapped", "Key", "T1"
+NumpadAdd & o::MsgBox "Not mapped", "Key", "T1"
+NumpadAdd & p::MsgBox "Not mapped", "Key", "T1"
+NumpadAdd & a::MsgBox "Not mapped", "Key", "T1"
+NumpadAdd & s::MsgBox "Not mapped", "Key", "T1"
+NumpadAdd & d::MsgBox "Not mapped", "Key", "T1"
+NumpadAdd & g::MsgBox "Not mapped", "Key", "T1"
+NumpadAdd & h::MsgBox "Not mapped", "Key", "T1"
+NumpadAdd & j::MsgBox "Not mapped", "Key", "T1"
+NumpadAdd & k::MsgBox "Not mapped", "Key", "T1"
+NumpadAdd & l::MsgBox "Not mapped", "Key", "T1"
+NumpadAdd & c::MsgBox "Not mapped", "Key", "T1"
+NumpadAdd & v::MsgBox "Not mapped", "Key", "T1"
+NumpadAdd & n::MsgBox "Not mapped", "Key", "T1"
+
 ; minimize all
 NumpadAdd & Space::Send "#m"
 
 NumpadAdd & Z::
     {
-    WinWait "MINGW"
-    WinActivate "MINGW"
-    WinMove 440, 196, A_ScreenWidth/1.2, A_ScreenHeight/1.2, "MINGW"
+    WinWait "UCRT64"
+    WinActivate "UCRT64"
+    WinMove 440, 200, A_ScreenWidth/1.2, A_ScreenHeight/1.2, "UCRT64"
     return
     }
 
@@ -286,13 +315,13 @@ MyClipb(dataType)
     if dataType = 1
         {
 
-        Text := FileRead("D:\Users\xNNNNNN\dev\kzm\runtime\clipb.txt")
+        Text := FileRead("D:\Users\NNNNNNN\dev\kzm\runtime\clipb.txt")
         clipb := a_clipboard
         FoundPos := InStr("`r`n" Text "`r`n", "`r`n" Clipb "`r`n")
         if FoundPos = 0
             {
 
-            FileAppend "`r`n" A_Clipboard "`r`n", "D:\Users\xNNNNNN\dev\kzm\runtime\clipb.txt"
+            FileAppend "`r`n" A_Clipboard "`r`n", "D:\Users\NNNNNNN\dev\kzm\runtime\clipb.txt"
             }
         }
     return
